@@ -32,8 +32,12 @@ class Settings(BaseSettings):
     # Answer common demo prompts with rules (0 LLM calls) when pattern is clear.
     agent_rule_router: bool = True
 
-    # Synthetic SQL Server demo DB. If empty, defaults to LocalDB AnalyticsDemo.
-    # Example ODBC URL form is documented in .env.example.
+    # Shared showcase dataset from PortfolioAPI (same payload as the dashboard).
+    # Example: http://127.0.0.1:5157 — agent calls GET {base}/api/dashboard/analytics
+    portfolio_api_base_url: str | None = "http://127.0.0.1:5157"
+    portfolio_api_timeout_seconds: float = 5.0
+
+    # Legacy LocalDB e-commerce seed (unused by portfolio tools; kept for older scripts).
     database_url: str | None = None
 
     @property

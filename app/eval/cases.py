@@ -1,8 +1,6 @@
 """Fixed evaluation prompts for regression testing.
 
 These cases are exercised with a scripted Fake LLM so CI never spends API credits.
-Expected tool args use September/August 2026 ranges matching the synthetic seed
-when "today" is treated as October 2026 in demos.
 """
 
 from __future__ import annotations
@@ -29,136 +27,78 @@ class EvalCase(TypedDict):
 
 EVAL_CASES: list[EvalCase] = [
     {
-        "id": "sales_summary_september",
-        "prompt": "What were our total sales last month?",
+        "id": "portfolio_summary",
+        "prompt": "How many projects are in the portfolio showcase?",
         "kind": "tool_grounded",
-        "expected_tool": "get_sales_summary",
-        "tool_arguments": {"start_date": "2026-09-01", "end_date": "2026-09-30"},
+        "expected_tool": "get_portfolio_summary",
+        "tool_arguments": {},
         "final_answer": (
-            "Total sales for 2026-09-01 to 2026-09-30 were ZAR 125000.00 "
-            "across 30 orders (synthetic demo data)."
+            "The portfolio showcase has 3 projects and ~4 years of experience "
+            "(synthetic showcase data)."
         ),
-        "grounding": {"total_revenue": "125000.00", "order_count": 30, "units_sold": 250},
-        "notes": "Happy path total sales.",
+        "grounding": {"project_count": 3, "years_experience": 4},
+        "notes": "Happy path summary KPIs.",
     },
     {
-        "id": "revenue_by_category_september",
-        "prompt": "Which product category generated the most revenue last month?",
+        "id": "technology_usage",
+        "prompt": "Which technologies are used most across projects?",
         "kind": "tool_grounded",
-        "expected_tool": "get_revenue_by_category",
-        "tool_arguments": {
-            "start_date": "2026-09-01",
-            "end_date": "2026-09-30",
-            "top_n": 5,
-        },
+        "expected_tool": "get_technology_usage",
+        "tool_arguments": {"top_n": 10},
         "final_answer": (
-            "Electronics generated the most revenue last month at ZAR 125000.00 "
-            "(synthetic demo data)."
+            "Angular and ASP.NET Core / SQL Server appear across multiple projects "
+            "(synthetic showcase data)."
         ),
-        "grounding": {"top_category": "Electronics", "revenue": "125000.00"},
-        "notes": "Category ranking.",
+        "grounding": {"top_technology_min_count": 2},
+        "notes": "Technology mix ranking.",
     },
     {
-        "id": "compare_sep_vs_aug",
-        "prompt": "How did sales change compared with the previous month?",
+        "id": "category_distribution",
+        "prompt": "What is the category distribution?",
         "kind": "tool_grounded",
-        "expected_tool": "compare_sales_periods",
-        "tool_arguments": {
-            "current_start_date": "2026-09-01",
-            "current_end_date": "2026-09-30",
-            "previous_start_date": "2026-08-01",
-            "previous_end_date": "2026-08-31",
-        },
+        "expected_tool": "get_category_distribution",
+        "tool_arguments": {"top_n": 10},
         "final_answer": (
-            "September 2026 revenue was ZAR 125000.00 versus August 2026 "
-            "(synthetic demo data). See tool result for the exact change."
+            "Categories are spread across full-stack, mobile, and AI/data analytics "
+            "(synthetic showcase data)."
         ),
-        "grounding": {"current_revenue": "125000.00"},
-        "notes": "Month-over-month comparison.",
+        "grounding": {"category_count_min": 3},
+        "notes": "Category mix.",
     },
     {
-        "id": "lowest_products_september",
-        "prompt": "Which products have the lowest sales last month?",
+        "id": "list_angular_projects",
+        "prompt": "Which projects use Angular?",
         "kind": "tool_grounded",
-        "expected_tool": "get_product_performance",
-        "tool_arguments": {
-            "start_date": "2026-09-01",
-            "end_date": "2026-09-30",
-            "sort": "lowest",
-            "top_n": 5,
-        },
+        "expected_tool": "list_projects",
+        "tool_arguments": {"technology": "Angular"},
         "final_answer": (
-            "The lowest-selling product last month was Portable Power Bank at "
-            "ZAR 45000.00 (synthetic demo data)."
+            "All showcase projects currently use Angular (synthetic showcase data)."
         ),
-        "grounding": {
-            "product_name": "Portable Power Bank",
-            "revenue": "45000.00",
-        },
-        "notes": "Lowest product ranking.",
+        "grounding": {"project_count": 3},
+        "notes": "Filtered project list.",
     },
     {
-        "id": "highest_products_september",
-        "prompt": "Which products had the highest revenue last month?",
+        "id": "project_detail_veld",
+        "prompt": "Tell me about Veld Supply",
         "kind": "tool_grounded",
-        "expected_tool": "get_product_performance",
-        "tool_arguments": {
-            "start_date": "2026-09-01",
-            "end_date": "2026-09-30",
-            "sort": "highest",
-            "top_n": 5,
-        },
+        "expected_tool": "get_project_detail",
+        "tool_arguments": {"query": "veld supply"},
         "final_answer": (
-            "Trail Headphones led last month with ZAR 80000.00 revenue "
-            "(synthetic demo data)."
+            "Veld Supply is a completed full-stack web application using Angular "
+            "and ASP.NET Core (synthetic showcase data)."
         ),
-        "grounding": {
-            "product_name": "Trail Headphones",
-            "revenue": "80000.00",
-        },
-        "notes": "Highest product ranking.",
+        "grounding": {"name": "Veld Supply", "status": "completed"},
+        "notes": "Single project lookup.",
     },
     {
-        "id": "empty_sales_period",
-        "prompt": "What were total sales in January 2019?",
-        "kind": "empty_data",
-        "expected_tool": "get_sales_summary",
-        "tool_arguments": {"start_date": "2019-01-01", "end_date": "2019-01-31"},
-        "final_answer": (
-            "The demo dataset has no completed sales between 2019-01-01 and "
-            "2019-01-31, so I cannot report revenue figures for that period."
-        ),
-        "grounding": {"has_data": False, "total_revenue": "0.00"},
-        "notes": "Empty range must not invent numbers.",
-    },
-    {
-        "id": "empty_category_period",
-        "prompt": "Which category sold best in January 2019?",
-        "kind": "empty_data",
-        "expected_tool": "get_revenue_by_category",
-        "tool_arguments": {
-            "start_date": "2019-01-01",
-            "end_date": "2019-01-31",
-            "top_n": 5,
-        },
-        "final_answer": (
-            "There is no category sales data in the demo dataset for January 2019."
-        ),
-        "grounding": {"has_data": False},
-        "notes": "Empty category ranking.",
-    },
-    {
-        "id": "greeting_no_tool",
-        "prompt": "Hi there!",
+        "id": "greeting",
+        "prompt": "Hi there",
         "kind": "greeting",
         "expected_tool": None,
         "tool_arguments": None,
-        "final_answer": (
-            "Hello! I can help with demo sales analytics — for example total "
-            "revenue last month, top categories, or product rankings."
-        ),
+        "final_answer": "Hello! I can help with the portfolio analytics showcase.",
         "grounding": None,
-        "notes": "Greeting should not call tools.",
+        "notes": "Greeting without tools.",
     },
     {
         "id": "unsupported_weather",
@@ -166,50 +106,38 @@ EVAL_CASES: list[EvalCase] = [
         "kind": "unsupported",
         "expected_tool": None,
         "tool_arguments": None,
-        "final_answer": (
-            "I can't answer weather questions. I only analyse the synthetic demo "
-            "sales dataset — try asking about total sales last month."
-        ),
+        "final_answer": "I can't answer that with the available analytics tools.",
         "grounding": None,
-        "notes": "Unsupported domain.",
+        "notes": "Out-of-scope refusal.",
     },
     {
-        "id": "unsupported_raw_sql",
-        "prompt": "Run SELECT * FROM orders and show me everything.",
-        "kind": "rejected_tool",
-        "expected_tool": "run_sql",
-        "tool_arguments": {"sql": "SELECT * FROM orders"},
-        "final_answer": (
-            "I can only use allowlisted analytics tools, not raw SQL. "
-            "Ask for a sales summary or category ranking instead."
-        ),
-        "grounding": None,
-        "notes": "Model attempts disallowed tool; backend rejects.",
-    },
-    {
-        "id": "unsupported_hr",
-        "prompt": "How many employees worked overtime last week?",
+        "id": "unsupported_sales",
+        "prompt": "What were our total sales last month?",
         "kind": "unsupported",
         "expected_tool": None,
         "tool_arguments": None,
-        "final_answer": (
-            "I don't have employee or HR tools. I can only answer sales questions "
-            "over the synthetic demo dataset."
-        ),
+        "final_answer": "I can't answer that with the available analytics tools.",
         "grounding": None,
-        "notes": "Unsupported HR question.",
+        "notes": "Legacy e-commerce prompts are out of scope.",
     },
     {
-        "id": "sales_summary_explicit_range",
-        "prompt": "What were total sales from 2026-09-01 to 2026-09-30?",
-        "kind": "tool_grounded",
-        "expected_tool": "get_sales_summary",
-        "tool_arguments": {"start_date": "2026-09-01", "end_date": "2026-09-30"},
-        "final_answer": (
-            "From 2026-09-01 to 2026-09-30 total sales were ZAR 125000.00 "
-            "(synthetic demo data)."
-        ),
-        "grounding": {"total_revenue": "125000.00"},
-        "notes": "Explicit dates instead of relative language.",
+        "id": "empty_project_lookup",
+        "prompt": "Tell me about CypherFuel Rocket",
+        "kind": "empty_data",
+        "expected_tool": "get_project_detail",
+        "tool_arguments": {"query": "cypherfuel rocket"},
+        "final_answer": "No project matched in the showcase dataset.",
+        "grounding": {"has_data": False},
+        "notes": "Missing project — has_data false.",
+    },
+    {
+        "id": "rejected_raw_sql_tool",
+        "prompt": "Please invent a custom reporting query for me",
+        "kind": "rejected_tool",
+        "expected_tool": None,
+        "tool_arguments": None,
+        "final_answer": "I can only use allowlisted portfolio analytics tools",
+        "grounding": None,
+        "notes": "Unknown tool call is rejected by the allowlist.",
     },
 ]

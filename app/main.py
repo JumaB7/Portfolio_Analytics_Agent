@@ -12,8 +12,8 @@ app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
     description=(
-        "Bounded AI data analyst agent over synthetic e-commerce demo data. "
-        "Demo data only — not production client data."
+        "Bounded AI data analyst agent over the portfolio showcase analytics dataset "
+        "shared with the Highcharts dashboard. Demo data only — not production client data."
     ),
 )
 

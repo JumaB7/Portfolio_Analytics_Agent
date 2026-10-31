@@ -8,84 +8,126 @@ from __future__ import annotations
 from typing import Any
 
 
-def _zar(value: Any) -> str:
-    amount = float(value or 0)
-    return f"ZAR {amount:,.2f}"
+def _first_sentence(text: str) -> str:
+    cleaned = " ".join((text or "").split()).strip()
+    if not cleaned:
+        return ""
+    # Keep a short spoken bio — full resume dumps feel copy-pasted.
+    parts = cleaned.split(". ")
+    first = parts[0].rstrip(".")
+    return f"{first}."
 
 
-def _range(start: Any, end: Any) -> str:
-    return f"{start} to {end}"
+def _render_owner_profile(result: dict[str, Any], label: str) -> str:
+    name = str(result.get("name") or "The portfolio owner").strip()
+    role = str(result.get("role") or "software engineer").strip()
+    location = str(result.get("location") or "").strip()
+    summary = _first_sentence(str(result.get("summary") or ""))
+    projects = result.get("project_count", 0)
+
+    # Drop a leading role echo so we don't say "X is a Full-Stack… Full-Stack…"
+    if summary.lower().startswith(role.lower()):
+        remainder = summary[len(role) :].lstrip(" ,.")
+        summary = remainder[:1].upper() + remainder[1:] if remainder else ""
+
+    where = f" based in {location}" if location else ""
+    lead = f"{name} is a {role}{where}."
+    mid = f" {summary}" if summary else ""
+    close = f" This showcase covers {projects} of their projects."
+    return f"{lead}{mid}{close} (Showcase data: {label}.)"
 
 
 def render_tool_answer(tool_name: str, result: dict[str, Any]) -> str | None:
     """Return a grounded template answer, or None if this tool has no template."""
-    if tool_name == "get_sales_summary":
-        start = result.get("start_date")
-        end = result.get("end_date")
+    label = result.get("dataset_label") or "showcase portfolio data"
+
+    if tool_name == "get_owner_profile":
         if not result.get("has_data"):
-            return (
-                f"The demo dataset has no completed sales between {_range(start, end)}, "
-                "so I cannot report revenue figures for that period."
-            )
-        return (
-            f"Total sales for {_range(start, end)} were {_zar(result.get('total_revenue'))} "
-            f"across {result.get('order_count', 0)} orders and {result.get('units_sold', 0)} units "
-            "(synthetic demo data)."
-        )
+            return "The showcase dataset has no owner profile to share."
+        return _render_owner_profile(result, label)
 
-    if tool_name == "get_revenue_by_category":
-        start = result.get("start_date")
-        end = result.get("end_date")
-        categories = result.get("categories") or []
-        if not result.get("has_data") or not categories:
-            return (
-                f"There is no category sales data in the demo dataset between "
-                f"{_range(start, end)}."
-            )
-        top = categories[0]
-        return (
-            f"The top category for {_range(start, end)} was {top.get('category')} "
-            f"with {_zar(top.get('revenue'))} "
-            f"({top.get('order_count', 0)} orders, synthetic demo data)."
-        )
+    if tool_name == "get_skills":
+        groups = result.get("groups") or []
+        if not result.get("has_data") or not groups:
+            return f"No matching skills found in the portfolio content ({label})."
+        bits = []
+        for group in groups:
+            skills = ", ".join(group.get("skills") or [])
+            bits.append(f"{group.get('title')}: {skills}")
+        return f"Skills on the portfolio — {'; '.join(bits)}."
 
-    if tool_name == "compare_sales_periods":
-        current = result.get("current_period") or {}
-        previous = result.get("previous_period") or {}
+    if tool_name == "get_experience":
+        entries = result.get("entries") or []
+        if not result.get("has_data") or not entries:
+            return f"No experience entries found in the portfolio content ({label})."
+        bits = []
+        for entry in entries:
+            bits.append(
+                f"{entry.get('title')} at {entry.get('organization')} "
+                f"({entry.get('dates')}) — {entry.get('description')}"
+            )
+        return " ".join(bits)
+
+    if tool_name == "get_contact":
         if not result.get("has_data"):
-            return "No completed sales found in either compared period in the demo dataset."
-        change = result.get("revenue_change")
-        pct = result.get("revenue_change_pct")
-        pct_text = (
-            "percent change is not defined because previous revenue was zero"
-            if pct is None
-            else f"a {pct}% change"
-        )
+            return f"No public contact email is listed in the portfolio content ({label})."
+        return f"You can reach Jumari at {result.get('email')}."
+
+    if tool_name == "get_portfolio_summary":
+        if not result.get("has_data"):
+            return "The showcase dataset has no portfolio projects to summarise."
+        statuses = result.get("status_counts") or {}
+        status_bits = ", ".join(f"{k}: {v}" for k, v in statuses.items()) or "n/a"
         return (
-            f"Current period {_range(current.get('start_date'), current.get('end_date'))} "
-            f"revenue was {_zar(current.get('total_revenue'))}. "
-            f"Previous period {_range(previous.get('start_date'), previous.get('end_date'))} "
-            f"was {_zar(previous.get('total_revenue'))}. "
-            f"Change: {_zar(change)} ({pct_text}). Synthetic demo data."
+            "This portfolio currently showcases "
+            f"{result.get('project_count', 0)} projects, "
+            f"~{result.get('years_experience', 0)} years of experience, "
+            f"{result.get('technology_count', 0)} distinct project technologies, and "
+            f"{result.get('category_count', 0)} categories "
+            f"(status mix — {status_bits})."
         )
 
-    if tool_name == "get_product_performance":
-        start = result.get("start_date")
-        end = result.get("end_date")
-        products = result.get("products") or []
-        sort = result.get("sort") or "highest"
-        if not result.get("has_data") or not products:
-            return (
-                f"There is no product sales data in the demo dataset between "
-                f"{_range(start, end)}."
-            )
-        top = products[0]
-        label = "highest-selling" if sort == "highest" else "lowest-selling"
+    if tool_name == "list_projects":
+        projects = result.get("projects") or []
+        if not result.get("has_data") or not projects:
+            return f"No projects matched those filters in the showcase dataset ({label})."
+        names = ", ".join(str(p.get("name")) for p in projects)
         return (
-            f"The {label} product for {_range(start, end)} was "
-            f"{top.get('product_name')} ({top.get('sku')}) with "
-            f"{_zar(top.get('revenue'))} and {top.get('units_sold', 0)} units "
-            "(synthetic demo data)."
+            f"Found {result.get('project_count', len(projects))} project(s): {names}. "
+            f"Source: {label}."
+        )
+
+    if tool_name == "get_technology_usage":
+        rows = result.get("technologies") or []
+        if not result.get("has_data") or not rows:
+            return f"No technology usage data in the showcase dataset ({label})."
+        top = rows[0]
+        return (
+            f"The most-used technology is {top.get('technology')} "
+            f"({top.get('project_count')} projects). Source: {label}."
+        )
+
+    if tool_name == "get_category_distribution":
+        rows = result.get("categories") or []
+        if not result.get("has_data") or not rows:
+            return f"No category distribution data in the showcase dataset ({label})."
+        top = rows[0]
+        return (
+            f"The largest category is {top.get('category')} "
+            f"({top.get('project_count')} projects). Source: {label}."
+        )
+
+    if tool_name == "get_project_detail":
+        project = result.get("project")
+        if not result.get("has_data") or not project:
+            return result.get("message") or (
+                f"No matching project in the showcase dataset ({label})."
+            )
+        techs = ", ".join(project.get("technologies") or []) or "n/a"
+        return (
+            f"{project.get('name')} is in '{project.get('category')}' "
+            f"(status: {project.get('status') or 'n/a'}) and uses {techs}. "
+            f"Source: {label}."
         )
 
     return None
@@ -105,28 +147,27 @@ def render_from_activity(
                 return answer
         if status == "rejected":
             return (
-                "I can only use allowlisted analytics tools, not arbitrary or raw-SQL tools. "
-                "Try asking about total sales, categories, period comparison, or product rankings."
+                "I can only use allowlisted portfolio tools, not arbitrary or raw-SQL "
+                "tools. Try asking about Jumari, skills, experience, projects, or contact."
             )
         if status == "error":
             detail = getattr(item, "detail", None) or (
                 item.get("detail") if isinstance(item, dict) else None  # type: ignore[union-attr]
             )
             return (
-                f"I couldn't complete that analytics tool call"
+                f"I couldn't complete that tool call"
                 f"{f' ({detail})' if detail else ''}. "
-                "Please try a simpler sales question with an explicit date range."
+                "Please try a simpler portfolio question."
             )
     return None
 
 
 GREETING_ANSWER = (
-    "Hello! I can help with demo sales analytics — for example total revenue last month, "
-    "top categories, month-over-month changes, or product rankings."
+    "Hello! I can answer questions about this portfolio — who Jumari is, skills, "
+    "experience, projects, technologies, or how to get in touch."
 )
 
 UNSUPPORTED_ANSWER = (
-    "I can't answer that with the available analytics tools. "
-    "I only analyse the synthetic demo sales dataset — try total sales last month, "
-    "top categories, period comparison, or product rankings."
+    "I can't answer that with the available portfolio tools. "
+    "Try asking about Jumari, skills, experience, projects, technologies, or contact."
 )

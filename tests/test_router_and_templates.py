@@ -1,28 +1,17 @@
-from datetime import date
-
 from app.agent.answers import render_tool_answer
 from app.agent.orchestrator import AgentOrchestrator
 from app.agent.router import route_message
-from app.config import Settings
-from app.db.seed import initialize_demo_database
+from app.config import Settings, get_settings
 
 
-def setup_module() -> None:
-    initialize_demo_database()
-
-
-def test_route_total_sales_last_month() -> None:
-    decision = route_message(
-        "What were our total sales last month?",
-        today=date(2026, 10, 31),
-    )
+def test_route_portfolio_summary(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setenv("PORTFOLIO_API_BASE_URL", "")
+    get_settings.cache_clear()
+    decision = route_message("How many projects are in the portfolio showcase?")
     assert decision is not None
     assert decision.kind == "tool"
-    assert decision.tool_name == "get_sales_summary"
-    assert decision.arguments == {
-        "start_date": "2026-09-01",
-        "end_date": "2026-09-30",
-    }
+    assert decision.tool_name == "get_portfolio_summary"
+    assert decision.arguments == {}
 
 
 def test_route_greeting_and_unsupported() -> None:
@@ -32,24 +21,65 @@ def test_route_greeting_and_unsupported() -> None:
     weather = route_message("What's the weather in Cape Town tomorrow?")
     assert weather is not None and weather.kind == "unsupported"
 
-    # Regression: "whether" must not match unsupported "weather" substring.
-    # This phrasing should fall through to the LLM (None), not be rejected.
+    sales = route_message("What were our total sales last month?")
+    assert sales is not None and sales.kind == "unsupported"
+
+    # "whether" must not match unsupported "weather" substring.
     whether = route_message(
-        "Can you tell me whether sales improved versus the previous month?",
-        today=date(2026, 10, 31),
+        "Can you tell me whether Angular is used across projects?"
     )
-    assert whether is None
-
-    highest = route_message(
-        "Which products had the highest revenue last month?",
-        today=date(2026, 10, 31),
-    )
-    assert highest is not None
-    assert highest.kind == "tool"
-    assert highest.tool_name == "get_product_performance"
+    assert whether is None or whether.kind == "tool"
 
 
-def test_router_answers_without_llm(router_settings: Settings) -> None:
+def test_route_technology_usage() -> None:
+    decision = route_message("Which technologies are used most?")
+    assert decision is not None
+    assert decision.kind == "tool"
+    assert decision.tool_name == "get_technology_usage"
+
+
+def test_route_what_is_this_dashboard_about() -> None:
+    decision = route_message("What is this dashboard about?")
+    assert decision is not None
+    assert decision.kind == "tool"
+    assert decision.tool_name == "get_portfolio_summary"
+    assert decision.arguments == {}
+
+
+def test_route_who_is_jumari() -> None:
+    decision = route_message("Who is Jumari?")
+    assert decision is not None
+    assert decision.kind == "tool"
+    assert decision.tool_name == "get_owner_profile"
+    assert decision.arguments == {}
+
+
+def test_route_skills_and_experience() -> None:
+    skills = route_message("What are the skills?")
+    assert skills is not None
+    assert skills.tool_name == "get_skills"
+
+    experience = route_message("Where has Jumari worked?")
+    assert experience is not None
+    assert experience.tool_name == "get_experience"
+
+    contact = route_message("What is the contact email?")
+    assert contact is not None
+    assert contact.tool_name == "get_contact"
+
+
+def test_route_what_is_still_resolves_named_project() -> None:
+    decision = route_message("What is Veld Supply?")
+    assert decision is not None
+    assert decision.kind == "tool"
+    assert decision.tool_name == "get_project_detail"
+    assert decision.arguments == {"query": "veld supply"}
+
+
+def test_router_answers_without_llm(monkeypatch, router_settings: Settings) -> None:  # noqa: ANN001
+    monkeypatch.setenv("PORTFOLIO_API_BASE_URL", "")
+    get_settings.cache_clear()
+
     class BoomLlm:
         model_name = "should-not-be-called"
 
@@ -57,24 +87,57 @@ def test_router_answers_without_llm(router_settings: Settings) -> None:
             raise AssertionError("LLM should not be called for routed prompts")
 
     result = AgentOrchestrator(settings=router_settings, llm=BoomLlm()).run(
-        "What were our total sales last month?"
+        "How many projects are there?"
     )
     assert result.llm_calls == 0
     assert result.answer_source == "router"
-    assert result.tool_activity[0].tool_name == "get_sales_summary"
-    assert "125,000.00" in result.answer or "125000.00" in result.answer.replace(",", "")
+    assert result.tool_activity[0].tool_name == "get_portfolio_summary"
+    assert "3 projects" in result.answer
 
 
-def test_template_sales_summary_empty() -> None:
+def test_owner_profile_template_reads_naturally() -> None:
     answer = render_tool_answer(
-        "get_sales_summary",
+        "get_owner_profile",
         {
-            "start_date": "2019-01-01",
-            "end_date": "2019-01-31",
-            "has_data": False,
-            "total_revenue": "0.00",
+            "has_data": True,
+            "name": "Jumari Blignaut",
+            "role": "Full-Stack Software Engineer",
+            "location": "Potchefstroom, South Africa",
+            "summary": (
+                "Full-Stack Software Engineer with nearly four years of professional "
+                "experience developing and maintaining web applications across financial "
+                "technology, higher education and fleet telematics. Experienced in frontend "
+                "and backend development."
+            ),
+            "project_count": 3,
+            "years_experience": 4,
+            "highlights": [
+                {"label": "Based in", "value": "Potchefstroom, South Africa"},
+            ],
+            "dataset_label": "showcase",
         },
     )
     assert answer is not None
-    assert "no completed sales" in answer.lower()
-    assert "125000" not in answer
+    assert answer.startswith(
+        "Jumari Blignaut is a Full-Stack Software Engineer based in Potchefstroom, South Africa."
+    )
+    assert "Full-Stack Software Engineer with nearly" not in answer
+    assert "Highlights —" not in answer
+    assert "3 of their projects" in answer
+
+
+def test_template_portfolio_summary_empty() -> None:
+    answer = render_tool_answer(
+        "get_portfolio_summary",
+        {
+            "has_data": False,
+            "project_count": 0,
+            "years_experience": 0,
+            "technology_count": 0,
+            "category_count": 0,
+            "status_counts": {},
+            "dataset_label": "empty",
+        },
+    )
+    assert answer is not None
+    assert "no portfolio projects" in answer.lower()

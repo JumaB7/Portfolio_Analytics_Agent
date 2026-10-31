@@ -18,12 +18,12 @@ from app.tools.registry import (
 
 EMPTY_ANSWER_FALLBACK = (
     "I could not produce an answer from the model. "
-    "Try a concrete sales question such as total revenue for last month."
+    "Try a concrete portfolio question such as how many projects are in the showcase."
 )
 
 MAX_STEPS_FALLBACK = (
     "I reached the maximum number of tool steps without a final answer. "
-    "Please ask a simpler analytics question for a single date range."
+    "Please ask a simpler portfolio analytics question."
 )
 
 AnswerSource = Literal["router", "template", "llm"]
@@ -62,7 +62,7 @@ class AgentOrchestrator:
         cleaned = user_message.strip()
         if not cleaned:
             return ChatResponse(
-                answer="Please ask a non-empty analytics question about the demo sales data.",
+                answer="Please ask a non-empty analytics question about the portfolio showcase data.",
                 tool_activity=[],
                 model=self.settings.llm_model,
                 iterations=0,
@@ -168,8 +168,8 @@ class AgentOrchestrator:
                         and result.get("has_data") is False
                     ):
                         content["_instruction"] = (
-                            "Tool returned no data. Tell the user clearly that the demo "
-                            "dataset has no sales for this period. Do not invent numbers."
+                            "Tool returned no data. Tell the user clearly that the "
+                            "showcase dataset has no match. Do not invent numbers."
                         )
 
                     messages.append(

@@ -9,40 +9,48 @@ from pydantic import BaseModel, ValidationError
 ToolStatus = Literal["ok", "error", "rejected"]
 
 from app.schemas.tools import (
-    CompareSalesPeriodsInput,
-    ProductPerformanceInput,
-    RevenueByCategoryInput,
-    SalesSummaryInput,
+    CategoryDistributionInput,
+    ContactInput,
+    ExperienceInput,
+    OwnerProfileInput,
+    PortfolioSummaryInput,
+    ProjectDetailInput,
+    ProjectListInput,
+    SkillsInput,
+    TechnologyUsageInput,
 )
-from app.tools.categories import (
-    TOOL_DEFINITIONS as CATEGORY_TOOLS,
+from app.tools.portfolio import (
+    TOOL_DEFINITIONS as PORTFOLIO_TOOLS,
 )
-from app.tools.categories import get_revenue_by_category_tool
-from app.tools.comparisons import (
-    TOOL_DEFINITIONS as COMPARISON_TOOLS,
+from app.tools.portfolio import (
+    get_category_distribution_tool,
+    get_contact_tool,
+    get_experience_tool,
+    get_owner_profile_tool,
+    get_portfolio_summary_tool,
+    get_project_detail_tool,
+    get_skills_tool,
+    get_technology_usage_tool,
+    list_projects_tool,
 )
-from app.tools.comparisons import compare_sales_periods_tool
-from app.tools.products import (
-    TOOL_DEFINITIONS as PRODUCT_TOOLS,
-)
-from app.tools.products import get_product_performance_tool
-from app.tools.sales import TOOL_DEFINITIONS as SALES_TOOLS
-from app.tools.sales import get_sales_summary_tool
 
 ToolHandler = Callable[[BaseModel], BaseModel]
 
-TOOL_DEFINITIONS: list[dict[str, Any]] = [
-    *SALES_TOOLS,
-    *CATEGORY_TOOLS,
-    *COMPARISON_TOOLS,
-    *PRODUCT_TOOLS,
-]
+TOOL_DEFINITIONS: list[dict[str, Any]] = [*PORTFOLIO_TOOLS]
 
 _HANDLERS: dict[str, tuple[type[BaseModel], ToolHandler]] = {
-    "get_sales_summary": (SalesSummaryInput, get_sales_summary_tool),
-    "get_revenue_by_category": (RevenueByCategoryInput, get_revenue_by_category_tool),
-    "compare_sales_periods": (CompareSalesPeriodsInput, compare_sales_periods_tool),
-    "get_product_performance": (ProductPerformanceInput, get_product_performance_tool),
+    "get_owner_profile": (OwnerProfileInput, get_owner_profile_tool),
+    "get_skills": (SkillsInput, get_skills_tool),
+    "get_experience": (ExperienceInput, get_experience_tool),
+    "get_contact": (ContactInput, get_contact_tool),
+    "get_portfolio_summary": (PortfolioSummaryInput, get_portfolio_summary_tool),
+    "list_projects": (ProjectListInput, list_projects_tool),
+    "get_technology_usage": (TechnologyUsageInput, get_technology_usage_tool),
+    "get_category_distribution": (
+        CategoryDistributionInput,
+        get_category_distribution_tool,
+    ),
+    "get_project_detail": (ProjectDetailInput, get_project_detail_tool),
 }
 
 

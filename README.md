@@ -1,52 +1,44 @@
 # Portfolio Analytics Agent
 
-Bounded AI data analyst agent over **synthetic e-commerce demo data**.  
-Python FastAPI backend with allowlisted tools; Angular chat UI in `web/`.
+Bounded AI assistant over **portfolio site content** (about, skills, experience, projects, contact, dashboard KPIs) shared with JumariPortfolio.
 
-Demo data only — not client or employer data.
+Python FastAPI backend with allowlisted tools; site-wide FAB in PortfolioWebApp (path-based `/api/agent`). The standalone `web/` app remains for isolated demos.
 
-**Full history of how we built this:** [docs/PROJECT_WALKTHROUGH.md](docs/PROJECT_WALKTHROUGH.md)  
+Demo / showcase data only — not client or employer data.
+
+**Walkthrough:** [docs/PROJECT_WALKTHROUGH.md](docs/PROJECT_WALKTHROUGH.md)  
 **Eval catalog:** [docs/EVAL.md](docs/EVAL.md)
 
-## Stack (MVP)
+## Stack
 
 | Part | Choice |
 | --- | --- |
 | Backend | Python 3.12+, FastAPI, Pydantic |
 | Agent | Bounded tool-calling loop, allowlisted tools (no raw SQL from the model) |
-| Data | Synthetic SQL Server LocalDB database `AnalyticsDemo` |
-| LLM | OpenAI-compatible Chat Completions API (provider adapter) |
-| Frontend | Angular 19 + TypeScript (`web/`) |
-
-## First milestone
-
-One question → one tool call → grounded answer from demo data.
+| Data | `GET /api/dashboard/analytics` on PortfolioAPI (local seed fallback) |
+| LLM | OpenAI-compatible Chat Completions API |
+| Hosted UI | PortfolioWebApp FAB (all pages) → `/api/agent/*` |
 
 ## Efficiency defaults
 
 | Setting | Default | Effect |
 | --- | --- | --- |
-| `AGENT_RULE_ROUTER` | `true` | Common demo prompts answered with **0 LLM calls** |
+| `AGENT_RULE_ROUTER` | `true` | Common prompts answered with **0 LLM calls** |
 | `AGENT_TEMPLATE_ANSWERS` | `true` | After a tool runs, Python writes the answer (**no second LLM call**) |
-
-Sample prompts in the UI typically use the rule router (free). Ambiguous wording still uses the LLM once to choose a tool, then a template for the final text.
 
 ## Allowlisted tools
 
 | Tool | Purpose |
 | --- | --- |
-| `get_sales_summary` | Total revenue / orders / units for a date range |
-| `get_revenue_by_category` | Category ranking by revenue |
-| `compare_sales_periods` | Period vs period (e.g. month-over-month) |
-| `get_product_performance` | Highest or lowest products by revenue |
-
-## Requirements
-
-- Python 3.12+
-- Node.js 20+ and pnpm
-- SQL Server LocalDB (`(localdb)\MSSQLLocalDB`)
-- ODBC Driver 18 for SQL Server
-- An OpenAI API key (or another OpenAI-compatible provider) for chat only
+| `get_owner_profile` | Who Jumari is |
+| `get_skills` | Skills section |
+| `get_experience` | Work / education |
+| `get_contact` | Public email |
+| `get_portfolio_summary` | Project KPI overview |
+| `list_projects` | Filter projects |
+| `get_technology_usage` | Technology mix |
+| `get_category_distribution` | Category mix |
+| `get_project_detail` | One project by id or name |
 
 ## First-time setup
 
@@ -59,124 +51,56 @@ pip install -e ".[dev]"
 copy .env.example .env
 ```
 
-### API keys (`.env`)
-
-Edit `.env` (never commit this file):
+Edit `.env`:
 
 ```env
 LLM_API_KEY=sk-your-real-key-here
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4o-mini
+PORTFOLIO_API_BASE_URL=http://127.0.0.1:5157
 ```
 
-Notes:
+Leave `PORTFOLIO_API_BASE_URL` empty to force the built-in seed (same projects as the API seed).
 
-- The key stays on the **server** only. The Angular app never sees it.
-- Tool endpoints and most tests work **without** a key.
-- `POST /api/chat` needs a valid key and provider credits.
-- After any `.env` change, **restart the API** (see below).
+## Startup with JumariPortfolio (recommended)
 
-### Seed demo data
+Three processes, one browser origin (`http://localhost:4200`):
 
-```powershell
-python -m scripts.init_demo_db
-```
-
-Creates LocalDB database `AnalyticsDemo` and loads synthetic e-commerce rows.
-
-### Install the Angular app (once)
+1. **PortfolioAPI** (5157) — serves `/api/dashboard/analytics`
+2. **Agent API** (8000) — reads that dataset (or seed)
+3. **PortfolioWebApp** (4200) — proxies `/api` → 5157 and `/api/agent` → 8000/api
 
 ```powershell
-cd C:\Users\OEM\Personal\portfolio_analytics_agent\web
-pnpm install
-```
+# Terminal A — PortfolioAPI
+cd C:\Users\OEM\Personal\portfolio\JumariPortfolio\PortfolioAPI
+dotnet run
 
-## Startup (every day)
-
-Use **two terminals**.
-
-### Terminal 1 — API
-
-```powershell
+# Terminal B — Agent
 cd C:\Users\OEM\Personal\portfolio_analytics_agent
 .\.venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload --port 8000
-```
 
-Leave this running. Useful URLs:
-
-- Health: http://127.0.0.1:8000/health  
-- Swagger: http://127.0.0.1:8000/docs  
-- Chat API: `POST http://127.0.0.1:8000/api/chat`
-
-### Terminal 2 — Angular UI
-
-```powershell
-cd C:\Users\OEM\Personal\portfolio_analytics_agent\web
+# Terminal C — Portfolio web
+cd C:\Users\OEM\Personal\portfolio\JumariPortfolio\PortfolioWebApp
 pnpm start
 ```
 
-Open http://127.0.0.1:4200  
-The UI proxies `/api` to `http://127.0.0.1:8000`.
+Open http://localhost:4200 and use the chat FAB (or `/?agent=1`).
 
-## Restart the API
+Sample prompts:
 
-Do this after changing `.env` (API key, model, base URL), or if chat errors look stale.
+- “Who is Jumari?”
+- “What are the skills?”
+- “Where has Jumari worked?”
+- “Tell me about Veld Supply”
 
-1. Focus the uvicorn terminal.
-2. Stop it with `Ctrl+C`.
-3. Start again:
+## Standalone agent API
 
 ```powershell
-cd C:\Users\OEM\Personal\portfolio_analytics_agent
-.\.venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload --port 8000
 ```
 
-`--reload` watches **Python code** changes. It does **not** reliably reload environment variables from `.env`, so a full restart is required after secret/config edits.
-
-## Restart the Angular UI
-
-1. Focus the `pnpm start` terminal.
-2. `Ctrl+C`.
-3. Start again:
-
-```powershell
-cd C:\Users\OEM\Personal\portfolio_analytics_agent\web
-pnpm start
-```
-
-If the UI fails with missing `main.ts` / `tsconfig` resolve errors while files actually exist:
-
-```powershell
-cd C:\Users\OEM\Personal\portfolio_analytics_agent\web
-# stop pnpm start first
-Remove-Item .angular -Recurse -Force -ErrorAction SilentlyContinue
-pnpm start
-```
-
-## Try it
-
-### In the browser UI
-
-Open http://127.0.0.1:4200 and use a sample prompt, or ask:
-
-- “What were our total sales last month?”
-- “Which product category generated the most revenue last month?”
-- “How did sales change compared with the previous month?”
-- “Which products have the lowest sales last month?”
-
-### Via PowerShell (API only)
-
-```powershell
-Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/chat" `
-  -ContentType "application/json" `
-  -Body '{"message":"What were our total sales last month?"}'
-```
-
-### Tool check without an LLM
-
-http://127.0.0.1:8000/api/tools/sales-summary?start_date=2026-09-01&end_date=2026-09-30
+- Health: http://127.0.0.1:8000/health
+- Chat: `POST http://127.0.0.1:8000/api/chat`
+- Tools: http://127.0.0.1:8000/api/tools
 
 ## Tests
 
@@ -186,31 +110,15 @@ cd C:\Users\OEM\Personal\portfolio_analytics_agent
 pytest
 ```
 
-```powershell
-cd web
-pnpm build
-```
-
-## Project layout
-
-```
-app/                   # FastAPI + agent + tools
-app/eval/              # Fixed eval prompt catalog
-web/                   # Angular chat UI
-docs/PROJECT_WALKTHROUGH.md
-docs/EVAL.md
-scripts/init_demo_db.py
-tests/
-```
-
 ## Security note
 
-The model never generates or executes raw SQL. It may only call allowlisted tools. Tools validate inputs and run fixed read-only queries. Keep `LLM_API_KEY` in `.env` only — never in the Angular app or git.
+The model never generates or executes raw SQL. It may only call allowlisted tools. Keep `LLM_API_KEY` in `.env` only — never in the Angular app or git.
 
 ## Branches
 
 | Branch | Role |
 | --- | --- |
+| `feature/portfolio-dashboard-data` | Portfolio dataset tools + PortfolioAPI client |
 | `develop` | Day-to-day work |
 | `release` | Staging |
 | `main` | Production |

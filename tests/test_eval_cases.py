@@ -4,15 +4,17 @@ import pytest
 
 from app.agent.orchestrator import AgentOrchestrator
 from app.agent.provider import ProviderResponse, ToolCallRequest
-from app.config import Settings
-from app.db.seed import initialize_demo_database
+from app.config import Settings, get_settings
 from app.eval.cases import EVAL_CASES, EvalCase
 from tests.conftest import FakeLlm
 
 
-@pytest.fixture(scope="module", autouse=True)
-def _seed_demo_db() -> None:
-    initialize_demo_database()
+@pytest.fixture(autouse=True)
+def _local_seed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PORTFOLIO_API_BASE_URL", "")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 def _script_for_case(case: EvalCase) -> list[ProviderResponse]:
@@ -22,6 +24,33 @@ def _script_for_case(case: EvalCase) -> list[ProviderResponse]:
                 content=case["final_answer"],
                 tool_calls=[],
                 raw_message={"role": "assistant", "content": case["final_answer"]},
+            )
+        ]
+
+    if case["kind"] == "rejected_tool":
+        tool_call = ToolCallRequest(
+            id="call_eval",
+            name="run_sql",
+            arguments_json=json.dumps({"sql": "SELECT 1"}),
+        )
+        return [
+            ProviderResponse(
+                content=None,
+                tool_calls=[tool_call],
+                raw_message={
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "call_eval",
+                            "type": "function",
+                            "function": {
+                                "name": "run_sql",
+                                "arguments": tool_call.arguments_json,
+                            },
+                        }
+                    ],
+                },
             )
         ]
 
@@ -47,7 +76,6 @@ def _script_for_case(case: EvalCase) -> list[ProviderResponse]:
             }
         ],
     }
-    # With templates enabled, a successful/rejected tool ends the turn (no 2nd LLM call).
     return [
         ProviderResponse(
             content=None,
@@ -71,7 +99,6 @@ def test_eval_case(case: EvalCase, llm_path_settings: Settings) -> None:
 
     assert len(result.tool_activity) == 1
     activity = result.tool_activity[0]
-    assert activity.tool_name == case["expected_tool"]
     assert fake.calls == 1
     assert result.llm_calls == 1
 
@@ -81,35 +108,32 @@ def test_eval_case(case: EvalCase, llm_path_settings: Settings) -> None:
         assert "allowlisted" in result.answer.lower()
         return
 
+    assert activity.tool_name == case["expected_tool"]
     assert activity.status == "ok"
     assert activity.result is not None
     assert result.answer_source == "template"
     grounding = case["grounding"] or {}
 
-    if "total_revenue" in grounding:
-        assert activity.result["total_revenue"] == grounding["total_revenue"]
-        assert grounding["total_revenue"].split(".")[0] in result.answer.replace(",", "")
-    if "order_count" in grounding:
-        assert activity.result["order_count"] == grounding["order_count"]
-    if "units_sold" in grounding:
-        assert activity.result["units_sold"] == grounding["units_sold"]
+    if "project_count" in grounding:
+        assert activity.result.get("project_count") == grounding["project_count"]
+    if "years_experience" in grounding:
+        assert activity.result.get("years_experience") == grounding["years_experience"]
     if "has_data" in grounding:
         assert activity.result["has_data"] is grounding["has_data"]
-        if grounding["has_data"] is False:
-            assert "125000" not in result.answer.replace(",", "")
-    if "top_category" in grounding:
+    if "name" in grounding:
+        project = activity.result.get("project") or {}
+        assert project.get("name") == grounding["name"]
+        assert grounding["name"] in result.answer
+    if "status" in grounding:
+        project = activity.result.get("project") or {}
+        assert project.get("status") == grounding["status"]
+    if "top_technology_min_count" in grounding:
+        techs = activity.result.get("technologies") or []
+        assert techs
+        assert techs[0]["project_count"] >= grounding["top_technology_min_count"]
+    if "category_count_min" in grounding:
         categories = activity.result.get("categories") or []
-        assert categories
-        assert categories[0]["category"] == grounding["top_category"]
-        assert grounding["top_category"] in result.answer
-    if "current_revenue" in grounding:
-        current = activity.result.get("current_period") or {}
-        assert current["total_revenue"] == grounding["current_revenue"]
-    if "product_name" in grounding:
-        products = activity.result.get("products") or []
-        assert products
-        assert products[0]["product_name"] == grounding["product_name"]
-        assert grounding["product_name"] in result.answer
+        assert len(categories) >= grounding["category_count_min"]
 
 
 def test_eval_catalog_has_at_least_eight_cases() -> None:
