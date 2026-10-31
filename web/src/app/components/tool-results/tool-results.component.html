@@ -1,0 +1,43 @@
+@if (summaryCards().length || rankRows().length) {
+  <section class="results" aria-label="Structured tool results">
+    @if (summaryCards().length) {
+      <div class="cards">
+        @for (card of summaryCards(); track card.title + card.value) {
+          <article class="metric">
+            <p class="metric-label">{{ card.title }}</p>
+            <p class="metric-value">{{ card.value }}</p>
+            @if (card.hint) {
+              <p class="metric-hint">{{ card.hint }}</p>
+            }
+          </article>
+        }
+      </div>
+    }
+
+    @if (rankRows().length) {
+      <div class="ranks">
+        @for (row of rankRows(); track row.label + row.sublabel) {
+          <div class="rank-row">
+            <div class="rank-meta">
+              <div>
+                <p class="rank-label">{{ row.label }}</p>
+                @if (row.sublabel) {
+                  <p class="rank-sub">{{ row.sublabel }}</p>
+                }
+              </div>
+              <div class="rank-numbers">
+                <p class="rank-revenue">{{ row.revenue | currency: 'ZAR' : 'symbol-narrow' : '1.2-2' : 'en-ZA' }}</p>
+                @if (row.secondary) {
+                  <p class="rank-secondary">{{ row.secondary }}</p>
+                }
+              </div>
+            </div>
+            <div class="bar-track" aria-hidden="true">
+              <div class="bar-fill" [style.width]="barWidth(row.revenue)"></div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
+}

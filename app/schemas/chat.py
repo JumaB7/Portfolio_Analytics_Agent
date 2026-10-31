@@ -14,6 +14,7 @@ class ToolActivity(BaseModel):
     status: Literal["ok", "error", "rejected"]
     detail: str | None = None
     arguments: dict[str, Any] | None = None
+    result: dict[str, Any] | None = None
 
 
 class ChatResponse(BaseModel):

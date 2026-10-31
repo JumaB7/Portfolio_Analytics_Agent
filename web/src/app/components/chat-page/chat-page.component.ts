@@ -1,0 +1,102 @@
+import { NgClass } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
+
+import { ChatTurn } from '../../models/chat.models';
+import { ChatApiService } from '../../services/chat-api.service';
+import { ToolResultsComponent } from '../tool-results/tool-results.component';
+
+@Component({
+  selector: 'app-chat-page',
+  standalone: true,
+  imports: [FormsModule, NgClass, ToolResultsComponent],
+  templateUrl: './chat-page.component.html',
+  styleUrl: './chat-page.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class ChatPageComponent {
+  private readonly chatApi = inject(ChatApiService);
+
+  readonly draft = signal('');
+  readonly turns = signal<ChatTurn[]>([]);
+  readonly sending = signal(false);
+
+  readonly samplePrompts = [
+    'What were our total sales last month?',
+    'Which product category generated the most revenue last month?',
+    'How did sales change compared with the previous month?',
+    'Which products have the lowest sales last month?',
+  ] as const;
+
+  readonly canSend = computed(() => this.draft().trim().length > 0 && !this.sending());
+
+  useSample(prompt: string): void {
+    this.draft.set(prompt);
+  }
+
+  send(): void {
+    const message = this.draft().trim();
+    if (!message || this.sending()) {
+      return;
+    }
+
+    const turnId = crypto.randomUUID();
+    this.turns.update((existing) => [
+      {
+        id: turnId,
+        question: message,
+        loading: true,
+      },
+      ...existing,
+    ]);
+    this.draft.set('');
+    this.sending.set(true);
+
+    this.chatApi
+      .sendMessage(message)
+      .pipe(finalize(() => this.sending.set(false)))
+      .subscribe({
+        next: (response) => {
+          this.turns.update((existing) =>
+            existing.map((turn) =>
+              turn.id === turnId
+                ? { ...turn, loading: false, response }
+                : turn
+            )
+          );
+        },
+        error: (err: unknown) => {
+          const detail =
+            typeof err === 'object' &&
+            err !== null &&
+            'error' in err &&
+            typeof (err as { error?: { detail?: string } }).error?.detail === 'string'
+              ? (err as { error: { detail: string } }).error.detail
+              : 'Request failed. Is the API running on port 8000?';
+          this.turns.update((existing) =>
+            existing.map((turn) =>
+              turn.id === turnId
+                ? { ...turn, loading: false, error: detail }
+                : turn
+            )
+          );
+        },
+      });
+  }
+
+  onEnter(event: Event): void {
+    const keyboard = event as KeyboardEvent;
+    if (keyboard.shiftKey) {
+      return;
+    }
+    keyboard.preventDefault();
+    this.send();
+  }
+}

@@ -1,7 +1,7 @@
 # Portfolio Analytics Agent
 
 Bounded AI data analyst agent over **synthetic e-commerce demo data**.  
-Python FastAPI backend with allowlisted tools; Angular UI comes later.
+Python FastAPI backend with allowlisted tools; Angular chat UI in `web/`.
 
 Demo data only — not client or employer data.
 
@@ -13,7 +13,7 @@ Demo data only — not client or employer data.
 | Agent | Bounded tool-calling loop, allowlisted tools (no raw SQL from the model) |
 | Data | Synthetic SQL Server LocalDB database `AnalyticsDemo` |
 | LLM | OpenAI-compatible Chat Completions API (provider adapter) |
-| Frontend | Angular + TypeScript (after the API tool loop works) |
+| Frontend | Angular 19 + TypeScript (`web/`) |
 
 ## First milestone
 
@@ -33,11 +33,12 @@ One question → one tool call → grounded answer from demo data.
 ### Requirements
 
 - Python 3.12+
+- Node.js 20+ and pnpm
 - SQL Server LocalDB (`(localdb)\MSSQLLocalDB`)
 - ODBC Driver 18 for SQL Server
 - An OpenAI API key (or another OpenAI-compatible provider)
 
-### Install
+### Install API
 
 ```powershell
 cd C:\Users\OEM\Personal\portfolio_analytics_agent
@@ -62,9 +63,19 @@ python -m scripts.init_demo_db
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Try the agent (chat)
+### Run the Angular UI
 
-With the server running:
+In a second terminal:
+
+```powershell
+cd C:\Users\OEM\Personal\portfolio_analytics_agent\web
+pnpm install
+pnpm start
+```
+
+Open [http://127.0.0.1:4200](http://127.0.0.1:4200). The dev server proxies `/api` to `http://127.0.0.1:8000`.
+
+### Try the agent via API
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/chat" `
@@ -73,14 +84,6 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/chat" `
 ```
 
 Or use Swagger: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) → `POST /api/chat`.
-
-Other useful URLs:
-
-- Health: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
-- Sales summary: `/api/tools/sales-summary?start_date=2026-09-01&end_date=2026-09-30`
-- Categories: `/api/tools/revenue-by-category?start_date=2026-09-01&end_date=2026-09-30`
-- MoM compare: `/api/tools/compare-sales-periods?current_start_date=2026-09-01&current_end_date=2026-09-30&previous_start_date=2026-08-01&previous_end_date=2026-08-31`
-- Products: `/api/tools/product-performance?start_date=2026-09-01&end_date=2026-09-30&sort=lowest`
 
 Example chat prompts:
 
@@ -95,19 +98,16 @@ Example chat prompts:
 pytest
 ```
 
+```powershell
+cd web
+pnpm build
+```
+
 ## Project layout
 
 ```
-app/
-  main.py
-  config.py
-  api/chat.py          # POST /api/chat
-  api/tools.py         # direct tool HTTP endpoints
-  agent/               # prompts, provider adapter, orchestrator
-  db/                  # SQLAlchemy models, session, seed
-  services/analytics.py
-  tools/               # allowlisted tools + registry
-  schemas/
+app/                   # FastAPI + agent + tools
+web/                   # Angular chat UI
 scripts/init_demo_db.py
 tests/
 ```

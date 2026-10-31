@@ -1,0 +1,57 @@
+:root {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Manrope", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, monospace;
+
+  --ink: #e8eef2;
+  --muted: #9aadb8;
+  --accent: #3dba9c;
+  --accent-bright: #62d6b8;
+  --accent-deep: #1f7a64;
+  --surface: #151c22;
+  --surface-elevated: #1b242c;
+  --stroke: #2a3640;
+  --stroke-strong: #3a4a57;
+  --bg-0: #0b1014;
+  --bg-1: #122018;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% -10%, color-mix(in srgb, var(--accent-deep) 35%, transparent), transparent 42%),
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, #2a4a62 40%, transparent), transparent 36%),
+    linear-gradient(165deg, var(--bg-0), var(--bg-1) 55%, var(--bg-0));
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(var(--stroke) 1px, transparent 1px),
+    linear-gradient(90deg, var(--stroke) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+}
+
+button,
+textarea {
+  font: inherit;
+}

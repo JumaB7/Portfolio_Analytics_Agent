@@ -92,6 +92,8 @@ def test_agent_one_question_one_tool_grounded_answer() -> None:
     assert result.iterations == 2
     assert result.tool_activity[0].tool_name == "get_sales_summary"
     assert result.tool_activity[0].status == "ok"
+    assert result.tool_activity[0].result is not None
+    assert result.tool_activity[0].result["total_revenue"] == "125000.00"
     assert result.is_demo_dataset is True
     assert "125000" in result.answer
 

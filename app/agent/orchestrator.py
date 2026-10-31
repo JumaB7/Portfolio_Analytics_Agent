@@ -67,6 +67,7 @@ class AgentOrchestrator:
                             status=status,  # type: ignore[arg-type]
                             detail=detail,
                             arguments=args,
+                            result=result,
                         )
                     )
                     if status == "ok" and isinstance(result.get("is_demo_dataset"), bool):
