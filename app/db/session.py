@@ -60,10 +60,25 @@ def reset_engine_cache() -> None:
 
 @contextmanager
 def session_scope() -> Iterator[Session]:
+    """Read/write session (seed/admin). Commits on success."""
     session = get_session_factory()()
     try:
         yield session
         session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+@contextmanager
+def read_session_scope() -> Iterator[Session]:
+    """Read-only session for analytics tools. Never commits."""
+    session = get_session_factory()()
+    try:
+        yield session
+        session.rollback()
     except Exception:
         session.rollback()
         raise

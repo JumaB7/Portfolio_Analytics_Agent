@@ -1,4 +1,4 @@
-from app.db.session import session_scope
+from app.db.session import read_session_scope
 from app.schemas.tools import ProductPerformanceInput, ProductPerformanceOutput
 from app.services import analytics as analytics_service
 
@@ -19,7 +19,5 @@ TOOL_DEFINITIONS = [
 def get_product_performance_tool(
     params: ProductPerformanceInput,
 ) -> ProductPerformanceOutput:
-    with session_scope() as session:
-        result = analytics_service.get_product_performance(session, params)
-        session.expunge_all()
-        return result
+    with read_session_scope() as session:
+        return analytics_service.get_product_performance(session, params)

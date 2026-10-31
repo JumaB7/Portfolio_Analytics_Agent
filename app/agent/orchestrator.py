@@ -100,7 +100,7 @@ class AgentOrchestrator:
         activity = [
             ToolActivity(
                 tool_name=decision.tool_name,
-                status=status,  # type: ignore[arg-type]
+                status=status,
                 detail=detail,
                 arguments=decision.arguments,
                 result=result,
@@ -151,7 +151,7 @@ class AgentOrchestrator:
                     activity.append(
                         ToolActivity(
                             tool_name=call.name or "(missing)",
-                            status=status,  # type: ignore[arg-type]
+                            status=status,
                             detail=detail,
                             arguments=args,
                             result=result,
@@ -161,7 +161,12 @@ class AgentOrchestrator:
                         is_demo_dataset = result["is_demo_dataset"]
 
                     content = dict(result)
-                    if status == "ok" and result.get("has_data") is False:
+                    # Only useful when a second LLM turn will read the tool message.
+                    if (
+                        not self.settings.agent_template_answers
+                        and status == "ok"
+                        and result.get("has_data") is False
+                    ):
                         content["_instruction"] = (
                             "Tool returned no data. Tell the user clearly that the demo "
                             "dataset has no sales for this period. Do not invent numbers."

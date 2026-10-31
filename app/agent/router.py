@@ -29,6 +29,10 @@ def _normalize(text: str) -> str:
     return cleaned
 
 
+def _has_word(text: str, word: str) -> bool:
+    return re.search(rf"\b{re.escape(word)}\b", text) is not None
+
+
 def _last_month_range(today: date) -> tuple[date, date]:
     if today.month == 1:
         return resolve_calendar_month(today.year - 1, 12)
@@ -47,23 +51,16 @@ def route_message(message: str, *, today: date | None = None) -> RouteDecision |
     today = today or date.today()
     text = _normalize(message)
 
-    if text in {"hi", "hello", "hey", "hi there", "hello!", "hey!"} or text.startswith(
-        "hi "
+    # Word-boundary greetings only ("hi" / "hello"), not "highest".
+    if text in {"hi", "hello", "hey", "hi there"} or re.fullmatch(
+        r"(hi|hello|hey)( there)?", text
     ):
         return RouteDecision(kind="greeting", answer=GREETING_ANSWER)
 
     if any(
-        needle in text
-        for needle in (
-            "weather",
-            "select *",
-            "select * from",
-            "run sql",
-            "employee",
-            "overtime",
-            "hr ",
-        )
-    ):
+        _has_word(text, needle)
+        for needle in ("weather", "employee", "overtime")
+    ) or "select *" in text or "run sql" in text or re.search(r"\bhr\b", text):
         return RouteDecision(kind="unsupported", answer=UNSUPPORTED_ANSWER)
 
     last_start, last_end = _last_month_range(today)
@@ -73,7 +70,6 @@ def route_message(message: str, *, today: date | None = None) -> RouteDecision |
         "end_date": last_end.isoformat(),
     }
 
-    # Explicit ISO range for sales summary.
     explicit = re.search(
         r"total sales from (\d{4}-\d{2}-\d{2}) to (\d{4}-\d{2}-\d{2})",
         text,
@@ -88,16 +84,14 @@ def route_message(message: str, *, today: date | None = None) -> RouteDecision |
             },
         )
 
-    if "total sales" in text or "total revenue" in text or "our total sales" in text:
+    if "total sales" in text or "total revenue" in text:
         if "last month" in text or "previous month" in text:
             return RouteDecision(
                 kind="tool",
                 tool_name="get_sales_summary",
                 arguments=last_args,
             )
-        # January 2019 style empty-data demos
-        jan_2019 = re.search(r"january\s+2019", text)
-        if jan_2019:
+        if re.search(r"january\s+2019", text):
             return RouteDecision(
                 kind="tool",
                 tool_name="get_sales_summary",
@@ -105,7 +99,10 @@ def route_message(message: str, *, today: date | None = None) -> RouteDecision |
             )
 
     if "category" in text and (
-        "most revenue" in text or "top" in text or "sold best" in text or "generated" in text
+        "most revenue" in text
+        or "sold best" in text
+        or "generated" in text
+        or re.search(r"\btop\b", text)
     ):
         if "2019" in text:
             return RouteDecision(
@@ -147,7 +144,9 @@ def route_message(message: str, *, today: date | None = None) -> RouteDecision |
             arguments={**last_args, "sort": "lowest", "top_n": 5},
         )
 
-    if "product" in text and ("highest" in text or "top" in text or "best" in text):
+    if "product" in text and (
+        "highest" in text or re.search(r"\btop\b", text) or re.search(r"\bbest\b", text)
+    ):
         return RouteDecision(
             kind="tool",
             tool_name="get_product_performance",

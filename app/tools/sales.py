@@ -1,4 +1,4 @@
-from app.db.session import session_scope
+from app.db.session import read_session_scope
 from app.schemas.tools import SalesSummaryInput, SalesSummaryOutput
 from app.services import analytics as analytics_service
 
@@ -19,8 +19,5 @@ TOOL_DEFINITIONS = [
 
 def get_sales_summary_tool(params: SalesSummaryInput) -> SalesSummaryOutput:
     """Allowlisted tool entrypoint — validates inputs then runs a read-only query."""
-    with session_scope() as session:
-        result = analytics_service.get_sales_summary(session, params)
-        # Read-only path: avoid relying on commit; expire nothing needed.
-        session.expunge_all()
-        return result
+    with read_session_scope() as session:
+        return analytics_service.get_sales_summary(session, params)

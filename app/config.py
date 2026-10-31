@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
 
     # CORS origins for the Angular UI (comma-separated in .env)
-    cors_origins: str = "http://localhost:4200"
+    # Include both localhost and 127.0.0.1 — browsers treat them as different origins.
+    cors_origins: str = "http://localhost:4200,http://127.0.0.1:4200"
 
     # LLM provider (server-side only). OpenAI-compatible Chat Completions API.
     llm_api_key: str | None = None

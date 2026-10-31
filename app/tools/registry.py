@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
+
+ToolStatus = Literal["ok", "error", "rejected"]
 
 from app.schemas.tools import (
     CompareSalesPeriodsInput,
@@ -67,11 +69,10 @@ def openai_tool_schemas() -> list[dict[str, Any]]:
 
 def execute_allowlisted_tool(
     name: str, arguments_json: str
-) -> tuple[dict[str, Any], str, str]:
+) -> tuple[dict[str, Any], ToolStatus, str]:
     """Validate and execute an allowlisted tool.
 
     Returns (result_dict, status, detail).
-    status is ok | error | rejected.
     """
     if name not in _HANDLERS:
         return (

@@ -1,4 +1,4 @@
-from app.db.session import session_scope
+from app.db.session import read_session_scope
 from app.schemas.tools import CompareSalesPeriodsInput, CompareSalesPeriodsOutput
 from app.services import analytics as analytics_service
 
@@ -20,7 +20,5 @@ TOOL_DEFINITIONS = [
 def compare_sales_periods_tool(
     params: CompareSalesPeriodsInput,
 ) -> CompareSalesPeriodsOutput:
-    with session_scope() as session:
-        result = analytics_service.compare_sales_periods(session, params)
-        session.expunge_all()
-        return result
+    with read_session_scope() as session:
+        return analytics_service.compare_sales_periods(session, params)

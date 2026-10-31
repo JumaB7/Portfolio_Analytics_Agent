@@ -299,3 +299,4 @@ Suggested next themes after hardening merges: portfolio polish (diagrams, record
 
 - Root [README.md](../README.md) — setup, startup, restart  
 - [EVAL.md](./EVAL.md) — evaluation catalog behaviour  
+- [CODE_REVIEW.md](./CODE_REVIEW.md) — senior review, gaps, framework questions  

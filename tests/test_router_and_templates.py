@@ -32,6 +32,22 @@ def test_route_greeting_and_unsupported() -> None:
     weather = route_message("What's the weather in Cape Town tomorrow?")
     assert weather is not None and weather.kind == "unsupported"
 
+    # Regression: "whether" must not match unsupported "weather" substring.
+    # This phrasing should fall through to the LLM (None), not be rejected.
+    whether = route_message(
+        "Can you tell me whether sales improved versus the previous month?",
+        today=date(2026, 10, 31),
+    )
+    assert whether is None
+
+    highest = route_message(
+        "Which products had the highest revenue last month?",
+        today=date(2026, 10, 31),
+    )
+    assert highest is not None
+    assert highest.kind == "tool"
+    assert highest.tool_name == "get_product_performance"
+
 
 def test_router_answers_without_llm(router_settings: Settings) -> None:
     class BoomLlm:
