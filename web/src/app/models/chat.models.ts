@@ -13,11 +13,15 @@ export interface ChatRequest {
   session_id?: string;
 }
 
+export type AnswerSource = 'router' | 'template' | 'llm';
+
 export interface ChatResponse {
   answer: string;
   tool_activity: ToolActivity[];
   model: string;
   iterations: number;
+  llm_calls?: number;
+  answer_source?: AnswerSource;
   is_demo_dataset?: boolean;
 }
 

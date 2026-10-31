@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
+from app.agent.answers import render_from_activity
 from app.agent.errors import LlmProviderError
 from app.agent.prompts import build_system_prompt
 from app.agent.provider import OpenAiCompatibleProvider, ProviderResponse
+from app.agent.router import route_message
 from app.config import Settings, get_settings
 from app.schemas.chat import ChatResponse, ToolActivity
 from app.tools.registry import (
@@ -23,6 +25,8 @@ MAX_STEPS_FALLBACK = (
     "I reached the maximum number of tool steps without a final answer. "
     "Please ask a simpler analytics question for a single date range."
 )
+
+AnswerSource = Literal["router", "template", "llm"]
 
 
 class LlmClient(Protocol):
@@ -45,8 +49,14 @@ class AgentOrchestrator:
         llm: LlmClient | None = None,
     ) -> None:
         self.settings = settings or get_settings()
-        self.llm = llm or OpenAiCompatibleProvider(self.settings)
+        self._llm = llm
         self.max_iterations = self.settings.agent_max_tool_iterations
+
+    @property
+    def llm(self) -> LlmClient:
+        if self._llm is None:
+            self._llm = OpenAiCompatibleProvider(self.settings)
+        return self._llm
 
     def run(self, user_message: str) -> ChatResponse:
         cleaned = user_message.strip()
@@ -54,11 +64,65 @@ class AgentOrchestrator:
             return ChatResponse(
                 answer="Please ask a non-empty analytics question about the demo sales data.",
                 tool_activity=[],
-                model=self.llm.model_name,
+                model=self.settings.llm_model,
                 iterations=0,
+                llm_calls=0,
+                answer_source="template",
                 is_demo_dataset=None,
             )
 
+        if self.settings.agent_rule_router:
+            routed = self._run_router(cleaned)
+            if routed is not None:
+                return routed
+
+        return self._run_llm_loop(cleaned)
+
+    def _run_router(self, cleaned: str) -> ChatResponse | None:
+        decision = route_message(cleaned)
+        if decision is None:
+            return None
+
+        if decision.kind in {"greeting", "unsupported"}:
+            return ChatResponse(
+                answer=decision.answer or "",
+                tool_activity=[],
+                model="rule-router",
+                iterations=0,
+                llm_calls=0,
+                answer_source="router",
+                is_demo_dataset=None,
+            )
+
+        assert decision.tool_name and decision.arguments is not None
+        args_json = json.dumps(decision.arguments)
+        result, status, detail = execute_allowlisted_tool(decision.tool_name, args_json)
+        activity = [
+            ToolActivity(
+                tool_name=decision.tool_name,
+                status=status,  # type: ignore[arg-type]
+                detail=detail,
+                arguments=decision.arguments,
+                result=result,
+            )
+        ]
+        is_demo = (
+            result.get("is_demo_dataset")
+            if status == "ok" and isinstance(result.get("is_demo_dataset"), bool)
+            else None
+        )
+        answer = render_from_activity(activity) or EMPTY_ANSWER_FALLBACK
+        return ChatResponse(
+            answer=answer,
+            tool_activity=activity,
+            model="rule-router",
+            iterations=1,
+            llm_calls=0,
+            answer_source="router",
+            is_demo_dataset=is_demo,
+        )
+
+    def _run_llm_loop(self, cleaned: str) -> ChatResponse:
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": build_system_prompt()},
             {"role": "user", "content": cleaned},
@@ -67,6 +131,7 @@ class AgentOrchestrator:
         activity: list[ToolActivity] = []
         is_demo_dataset: bool | None = None
         iterations = 0
+        llm_calls = 0
 
         for _ in range(self.max_iterations):
             iterations += 1
@@ -74,6 +139,7 @@ class AgentOrchestrator:
                 provider_response = self.llm.complete(messages, tools)
             except LlmProviderError:
                 raise
+            llm_calls += 1
 
             if provider_response.tool_calls:
                 messages.append(provider_response.raw_message)
@@ -94,7 +160,6 @@ class AgentOrchestrator:
                     if status == "ok" and isinstance(result.get("is_demo_dataset"), bool):
                         is_demo_dataset = result["is_demo_dataset"]
 
-                    # Reinforce empty-data honesty for the next model turn.
                     content = dict(result)
                     if status == "ok" and result.get("has_data") is False:
                         content["_instruction"] = (
@@ -109,6 +174,19 @@ class AgentOrchestrator:
                             "content": json.dumps(content),
                         }
                     )
+
+                if self.settings.agent_template_answers:
+                    templated = render_from_activity(activity)
+                    if templated:
+                        return ChatResponse(
+                            answer=templated,
+                            tool_activity=activity,
+                            model=self.llm.model_name,
+                            iterations=iterations,
+                            llm_calls=llm_calls,
+                            answer_source="template",
+                            is_demo_dataset=is_demo_dataset,
+                        )
                 continue
 
             answer = (provider_response.content or "").strip() or EMPTY_ANSWER_FALLBACK
@@ -117,13 +195,30 @@ class AgentOrchestrator:
                 tool_activity=activity,
                 model=self.llm.model_name,
                 iterations=iterations,
+                llm_calls=llm_calls,
+                answer_source="llm",
                 is_demo_dataset=is_demo_dataset,
             )
+
+        if self.settings.agent_template_answers:
+            templated = render_from_activity(activity)
+            if templated:
+                return ChatResponse(
+                    answer=templated,
+                    tool_activity=activity,
+                    model=self.llm.model_name,
+                    iterations=iterations,
+                    llm_calls=llm_calls,
+                    answer_source="template",
+                    is_demo_dataset=is_demo_dataset,
+                )
 
         return ChatResponse(
             answer=MAX_STEPS_FALLBACK,
             tool_activity=activity,
             model=self.llm.model_name,
             iterations=iterations,
+            llm_calls=llm_calls,
+            answer_source="llm",
             is_demo_dataset=is_demo_dataset,
         )

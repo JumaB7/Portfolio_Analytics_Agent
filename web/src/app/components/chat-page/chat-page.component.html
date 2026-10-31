@@ -67,7 +67,12 @@
               @if (response.is_demo_dataset) {
                 <span class="badge">Demo dataset</span>
               }
-              <span class="meta">{{ response.model }} · {{ response.iterations }} step(s)</span>
+              <span class="meta">
+                {{ response.model }} · {{ response.llm_calls ?? response.iterations }} LLM call(s)
+                @if (response.answer_source) {
+                  · {{ response.answer_source }}
+                }
+              </span>
             </div>
             <p class="answer-body">{{ response.answer }}</p>
 

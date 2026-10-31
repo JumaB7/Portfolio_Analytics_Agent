@@ -135,6 +135,13 @@ Each got schemas, analytics queries, registry entry, HTTP tool route, tests, and
 - Fixed eval catalog: `app/eval/cases.py` + `docs/EVAL.md` (Fake LLM, no credits)  
 - Angular parses structured `{ code, message }` API errors  
 
+### Step 7 — Efficiency (templated answers + rule router)
+
+- `AGENT_TEMPLATE_ANSWERS=true`: after tools succeed, Python renders the answer (skips 2nd LLM call)  
+- `AGENT_RULE_ROUTER=true`: common demo prompts / greetings / obvious unsupported questions run with **0 LLM calls**  
+- Chat response includes `llm_calls` and `answer_source` (`router` | `template` | `llm`)  
+- Routed sample questions work even without `LLM_API_KEY`  
+
 ---
 
 ## 5. API keys and secrets

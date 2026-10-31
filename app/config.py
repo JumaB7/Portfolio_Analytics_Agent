@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_timeout_seconds: float = 45.0
     agent_max_tool_iterations: int = 4
+    # Skip second LLM call: render grounded text from tool JSON in Python.
+    agent_template_answers: bool = True
+    # Answer common demo prompts with rules (0 LLM calls) when pattern is clear.
+    agent_rule_router: bool = True
 
     # Synthetic SQL Server demo DB. If empty, defaults to LocalDB AnalyticsDemo.
     # Example ODBC URL form is documented in .env.example.

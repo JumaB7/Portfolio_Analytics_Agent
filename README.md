@@ -22,6 +22,15 @@ Demo data only — not client or employer data.
 
 One question → one tool call → grounded answer from demo data.
 
+## Efficiency defaults
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `AGENT_RULE_ROUTER` | `true` | Common demo prompts answered with **0 LLM calls** |
+| `AGENT_TEMPLATE_ANSWERS` | `true` | After a tool runs, Python writes the answer (**no second LLM call**) |
+
+Sample prompts in the UI typically use the rule router (free). Ambiguous wording still uses the LLM once to choose a tool, then a template for the final text.
+
 ## Allowlisted tools
 
 | Tool | Purpose |

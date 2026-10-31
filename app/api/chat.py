@@ -10,22 +10,17 @@ router = APIRouter(tags=["chat"])
 
 @router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
-    """Run one bounded agent turn: optional tool calls, then a grounded answer."""
-    settings = get_settings()
-    if not settings.llm_api_key:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "code": "llm_not_configured",
-                "message": (
-                    "LLM_API_KEY is not set. Add your provider key to .env, "
-                    "restart the API, then retry."
-                ),
-            },
-        )
+    """Run one bounded agent turn: optional tool calls, then a grounded answer.
 
+    Common demo prompts can be answered by the rule router with zero LLM calls
+    (no API key required). Ambiguous prompts still need LLM_API_KEY.
+    """
+    settings = get_settings()
     try:
         return AgentOrchestrator(settings=settings).run(request.message)
     except LlmProviderError as exc:
-        status = 503 if exc.code in {"llm_not_configured", "llm_quota_exhausted"} else 502
+        status = 503 if exc.code in {
+            "llm_not_configured",
+            "llm_quota_exhausted",
+        } else 502
         raise HTTPException(status_code=status, detail=exc.as_http_detail()) from exc

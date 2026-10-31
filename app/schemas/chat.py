@@ -22,4 +22,12 @@ class ChatResponse(BaseModel):
     tool_activity: list[ToolActivity] = Field(default_factory=list)
     model: str
     iterations: int
+    llm_calls: int = Field(
+        default=0,
+        description="How many hosted LLM requests this turn used (0 when rule-routed).",
+    )
+    answer_source: Literal["router", "template", "llm"] = Field(
+        default="llm",
+        description="router=no LLM; template=LLM chose tool then Python answered; llm=model wrote text",
+    )
     is_demo_dataset: bool | None = None
