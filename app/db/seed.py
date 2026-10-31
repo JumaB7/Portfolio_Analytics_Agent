@@ -26,6 +26,32 @@ EXPECTED_SEPTEMBER_2026 = {
     "units_sold": 250,
 }
 
+# September seed is Electronics-only: headphones R80k + power banks R45k.
+EXPECTED_SEPTEMBER_2026_TOP_CATEGORY = {
+    "category": "Electronics",
+    "revenue": Decimal("125000.00"),
+    "order_count": 30,
+    "units_sold": 250,
+}
+
+EXPECTED_SEPTEMBER_2026_TOP_PRODUCT = {
+    "product_name": "Trail Headphones",
+    "sku": "EL-HD-001",
+    "category": "Electronics",
+    "revenue": Decimal("80000.00"),
+    "units_sold": 200,
+    "order_count": 20,
+}
+
+EXPECTED_SEPTEMBER_2026_LOWEST_PRODUCT = {
+    "product_name": "Portable Power Bank",
+    "sku": "EL-PB-002",
+    "category": "Electronics",
+    "revenue": Decimal("45000.00"),
+    "units_sold": 50,
+    "order_count": 10,
+}
+
 CATEGORIES = [
     "Electronics",
     "Outdoor",

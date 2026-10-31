@@ -19,6 +19,15 @@ Demo data only — not client or employer data.
 
 One question → one tool call → grounded answer from demo data.
 
+## Allowlisted tools
+
+| Tool | Purpose |
+| --- | --- |
+| `get_sales_summary` | Total revenue / orders / units for a date range |
+| `get_revenue_by_category` | Category ranking by revenue |
+| `compare_sales_periods` | Period vs period (e.g. month-over-month) |
+| `get_product_performance` | Highest or lowest products by revenue |
+
 ## Local setup
 
 ### Requirements
@@ -68,7 +77,17 @@ Or use Swagger: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) → `PO
 Other useful URLs:
 
 - Health: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
-- Direct tool (no LLM): [http://127.0.0.1:8000/api/tools/sales-summary?start_date=2026-09-01&end_date=2026-09-30](http://127.0.0.1:8000/api/tools/sales-summary?start_date=2026-09-01&end_date=2026-09-30)
+- Sales summary: `/api/tools/sales-summary?start_date=2026-09-01&end_date=2026-09-30`
+- Categories: `/api/tools/revenue-by-category?start_date=2026-09-01&end_date=2026-09-30`
+- MoM compare: `/api/tools/compare-sales-periods?current_start_date=2026-09-01&current_end_date=2026-09-30&previous_start_date=2026-08-01&previous_end_date=2026-08-31`
+- Products: `/api/tools/product-performance?start_date=2026-09-01&end_date=2026-09-30&sort=lowest`
+
+Example chat prompts:
+
+- “What were our total sales last month?”
+- “Which product category generated the most revenue last month?”
+- “How did sales change compared with the previous month?”
+- “Which products have the lowest sales last month?”
 
 ### Tests
 

@@ -6,13 +6,41 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from app.schemas.tools import SalesSummaryInput
-from app.tools.sales import TOOL_DEFINITIONS, get_sales_summary_tool
+from app.schemas.tools import (
+    CompareSalesPeriodsInput,
+    ProductPerformanceInput,
+    RevenueByCategoryInput,
+    SalesSummaryInput,
+)
+from app.tools.categories import (
+    TOOL_DEFINITIONS as CATEGORY_TOOLS,
+)
+from app.tools.categories import get_revenue_by_category_tool
+from app.tools.comparisons import (
+    TOOL_DEFINITIONS as COMPARISON_TOOLS,
+)
+from app.tools.comparisons import compare_sales_periods_tool
+from app.tools.products import (
+    TOOL_DEFINITIONS as PRODUCT_TOOLS,
+)
+from app.tools.products import get_product_performance_tool
+from app.tools.sales import TOOL_DEFINITIONS as SALES_TOOLS
+from app.tools.sales import get_sales_summary_tool
 
 ToolHandler = Callable[[BaseModel], BaseModel]
 
+TOOL_DEFINITIONS: list[dict[str, Any]] = [
+    *SALES_TOOLS,
+    *CATEGORY_TOOLS,
+    *COMPARISON_TOOLS,
+    *PRODUCT_TOOLS,
+]
+
 _HANDLERS: dict[str, tuple[type[BaseModel], ToolHandler]] = {
     "get_sales_summary": (SalesSummaryInput, get_sales_summary_tool),
+    "get_revenue_by_category": (RevenueByCategoryInput, get_revenue_by_category_tool),
+    "compare_sales_periods": (CompareSalesPeriodsInput, compare_sales_periods_tool),
+    "get_product_performance": (ProductPerformanceInput, get_product_performance_tool),
 }
 
 
