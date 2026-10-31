@@ -149,6 +149,57 @@ def test_chat_endpoint_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None
 
     response = client.post("/api/chat", json={"message": "What were total sales last month?"})
     assert response.status_code == 503
-    assert "LLM_API_KEY" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert detail["code"] == "llm_not_configured"
+    assert "LLM_API_KEY" in detail["message"]
 
     get_settings.cache_clear()
+
+
+def test_agent_empty_data_path_does_not_invent_revenue() -> None:
+    tool_call_message = {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [
+            {
+                "id": "call_empty",
+                "type": "function",
+                "function": {
+                    "name": "get_sales_summary",
+                    "arguments": json.dumps(
+                        {"start_date": "2019-01-01", "end_date": "2019-01-31"}
+                    ),
+                },
+            }
+        ],
+    }
+    answer = (
+        "The demo dataset has no completed sales between 2019-01-01 and 2019-01-31."
+    )
+    fake = FakeLlm(
+        [
+            ProviderResponse(
+                content=None,
+                tool_calls=[
+                    ToolCallRequest(
+                        id="call_empty",
+                        name="get_sales_summary",
+                        arguments_json=json.dumps(
+                            {"start_date": "2019-01-01", "end_date": "2019-01-31"}
+                        ),
+                    )
+                ],
+                raw_message=tool_call_message,
+            ),
+            ProviderResponse(
+                content=answer,
+                tool_calls=[],
+                raw_message={"role": "assistant", "content": answer},
+            ),
+        ]
+    )
+
+    result = AgentOrchestrator(llm=fake).run("What were total sales in January 2019?")
+    assert result.tool_activity[0].result is not None
+    assert result.tool_activity[0].result["has_data"] is False
+    assert "125000" not in result.answer

@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 
 import { ChatTurn } from '../../models/chat.models';
+import { readApiErrorMessage } from '../../services/api-error';
 import { ChatApiService } from '../../services/chat-api.service';
 import { ToolResultsComponent } from '../tool-results/tool-results.component';
 
@@ -73,13 +74,7 @@ export class ChatPageComponent {
           );
         },
         error: (err: unknown) => {
-          const detail =
-            typeof err === 'object' &&
-            err !== null &&
-            'error' in err &&
-            typeof (err as { error?: { detail?: string } }).error?.detail === 'string'
-              ? (err as { error: { detail: string } }).error.detail
-              : 'Request failed. Is the API running on port 8000?';
+          const detail = readApiErrorMessage(err);
           this.turns.update((existing) =>
             existing.map((turn) =>
               turn.id === turnId

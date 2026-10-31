@@ -5,6 +5,9 @@ Python FastAPI backend with allowlisted tools; Angular chat UI in `web/`.
 
 Demo data only — not client or employer data.
 
+**Full history of how we built this:** [docs/PROJECT_WALKTHROUGH.md](docs/PROJECT_WALKTHROUGH.md)  
+**Eval catalog:** [docs/EVAL.md](docs/EVAL.md)
+
 ## Stack (MVP)
 
 | Part | Choice |
@@ -28,17 +31,15 @@ One question → one tool call → grounded answer from demo data.
 | `compare_sales_periods` | Period vs period (e.g. month-over-month) |
 | `get_product_performance` | Highest or lowest products by revenue |
 
-## Local setup
-
-### Requirements
+## Requirements
 
 - Python 3.12+
 - Node.js 20+ and pnpm
 - SQL Server LocalDB (`(localdb)\MSSQLLocalDB`)
 - ODBC Driver 18 for SQL Server
-- An OpenAI API key (or another OpenAI-compatible provider)
+- An OpenAI API key (or another OpenAI-compatible provider) for chat only
 
-### Install API
+## First-time setup
 
 ```powershell
 cd C:\Users\OEM\Personal\portfolio_analytics_agent
@@ -49,33 +50,114 @@ pip install -e ".[dev]"
 copy .env.example .env
 ```
 
-Edit `.env` and set `LLM_API_KEY`.
+### API keys (`.env`)
 
-### Create and seed demo data
+Edit `.env` (never commit this file):
+
+```env
+LLM_API_KEY=sk-your-real-key-here
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
+```
+
+Notes:
+
+- The key stays on the **server** only. The Angular app never sees it.
+- Tool endpoints and most tests work **without** a key.
+- `POST /api/chat` needs a valid key and provider credits.
+- After any `.env` change, **restart the API** (see below).
+
+### Seed demo data
 
 ```powershell
 python -m scripts.init_demo_db
 ```
 
-### Run the API
+Creates LocalDB database `AnalyticsDemo` and loads synthetic e-commerce rows.
 
-```powershell
-uvicorn app.main:app --reload --port 8000
-```
-
-### Run the Angular UI
-
-In a second terminal:
+### Install the Angular app (once)
 
 ```powershell
 cd C:\Users\OEM\Personal\portfolio_analytics_agent\web
 pnpm install
+```
+
+## Startup (every day)
+
+Use **two terminals**.
+
+### Terminal 1 — API
+
+```powershell
+cd C:\Users\OEM\Personal\portfolio_analytics_agent
+.\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --port 8000
+```
+
+Leave this running. Useful URLs:
+
+- Health: http://127.0.0.1:8000/health  
+- Swagger: http://127.0.0.1:8000/docs  
+- Chat API: `POST http://127.0.0.1:8000/api/chat`
+
+### Terminal 2 — Angular UI
+
+```powershell
+cd C:\Users\OEM\Personal\portfolio_analytics_agent\web
 pnpm start
 ```
 
-Open [http://127.0.0.1:4200](http://127.0.0.1:4200). The dev server proxies `/api` to `http://127.0.0.1:8000`.
+Open http://127.0.0.1:4200  
+The UI proxies `/api` to `http://127.0.0.1:8000`.
 
-### Try the agent via API
+## Restart the API
+
+Do this after changing `.env` (API key, model, base URL), or if chat errors look stale.
+
+1. Focus the uvicorn terminal.
+2. Stop it with `Ctrl+C`.
+3. Start again:
+
+```powershell
+cd C:\Users\OEM\Personal\portfolio_analytics_agent
+.\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --port 8000
+```
+
+`--reload` watches **Python code** changes. It does **not** reliably reload environment variables from `.env`, so a full restart is required after secret/config edits.
+
+## Restart the Angular UI
+
+1. Focus the `pnpm start` terminal.
+2. `Ctrl+C`.
+3. Start again:
+
+```powershell
+cd C:\Users\OEM\Personal\portfolio_analytics_agent\web
+pnpm start
+```
+
+If the UI fails with missing `main.ts` / `tsconfig` resolve errors while files actually exist:
+
+```powershell
+cd C:\Users\OEM\Personal\portfolio_analytics_agent\web
+# stop pnpm start first
+Remove-Item .angular -Recurse -Force -ErrorAction SilentlyContinue
+pnpm start
+```
+
+## Try it
+
+### In the browser UI
+
+Open http://127.0.0.1:4200 and use a sample prompt, or ask:
+
+- “What were our total sales last month?”
+- “Which product category generated the most revenue last month?”
+- “How did sales change compared with the previous month?”
+- “Which products have the lowest sales last month?”
+
+### Via PowerShell (API only)
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/chat" `
@@ -83,18 +165,15 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/chat" `
   -Body '{"message":"What were our total sales last month?"}'
 ```
 
-Or use Swagger: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) → `POST /api/chat`.
+### Tool check without an LLM
 
-Example chat prompts:
+http://127.0.0.1:8000/api/tools/sales-summary?start_date=2026-09-01&end_date=2026-09-30
 
-- “What were our total sales last month?”
-- “Which product category generated the most revenue last month?”
-- “How did sales change compared with the previous month?”
-- “Which products have the lowest sales last month?”
-
-### Tests
+## Tests
 
 ```powershell
+cd C:\Users\OEM\Personal\portfolio_analytics_agent
+.\.venv\Scripts\Activate.ps1
 pytest
 ```
 
@@ -107,14 +186,17 @@ pnpm build
 
 ```
 app/                   # FastAPI + agent + tools
+app/eval/              # Fixed eval prompt catalog
 web/                   # Angular chat UI
+docs/PROJECT_WALKTHROUGH.md
+docs/EVAL.md
 scripts/init_demo_db.py
 tests/
 ```
 
 ## Security note
 
-The model never generates or executes raw SQL. It may only call allowlisted tools such as `get_sales_summary`. Tools validate inputs and run fixed read-only queries. Keep `LLM_API_KEY` in `.env` only.
+The model never generates or executes raw SQL. It may only call allowlisted tools. Tools validate inputs and run fixed read-only queries. Keep `LLM_API_KEY` in `.env` only — never in the Angular app or git.
 
 ## Branches
 
