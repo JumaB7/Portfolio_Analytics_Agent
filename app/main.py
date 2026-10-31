@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.chat import router as chat_router
+from app.api.tools import router as tools_router
 from app.config import get_settings
 from app.schemas.health import HealthResponse
 
@@ -22,6 +24,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(tools_router, prefix=settings.api_prefix)
+app.include_router(chat_router, prefix=settings.api_prefix)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])

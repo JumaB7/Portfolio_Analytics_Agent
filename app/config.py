@@ -20,12 +20,15 @@ class Settings(BaseSettings):
     # CORS origins for the Angular UI (comma-separated in .env)
     cors_origins: str = "http://localhost:4200"
 
-    # LLM provider (used in later milestones; kept here for config shape)
+    # LLM provider (server-side only). OpenAI-compatible Chat Completions API.
     llm_api_key: str | None = None
-    llm_base_url: str | None = None
+    llm_base_url: str | None = "https://api.openai.com/v1"
     llm_model: str = "gpt-4o-mini"
+    llm_timeout_seconds: float = 45.0
+    agent_max_tool_iterations: int = 4
 
-    # Demo analytics database (used in later milestones)
+    # Synthetic SQL Server demo DB. If empty, defaults to LocalDB AnalyticsDemo.
+    # Example ODBC URL form is documented in .env.example.
     database_url: str | None = None
 
     @property
