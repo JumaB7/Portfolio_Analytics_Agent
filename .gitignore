@@ -9,7 +9,17 @@ build/
 .venv/
 venv/
 .env
+.env.*
+!.env.example
 .python-version
+**/secrets.json
+**/*.pfx
+**/*.pem
+**/*.key
+*.mdf
+*.ldf
+*.sqlite
+*.db
 
 # Test / coverage
 .pytest_cache/
