@@ -1,0 +1,14 @@
+---
+description: Thin Angular components — signals, no template logic sprawl
+globs: web/**/*.{ts,html}
+alwaysApply: false
+---
+
+# Angular components
+
+- Standalone + `OnPush`. Prefer `inject()`, `input()` / `output()`, signals.
+- Do not call methods from templates for derived UI — use `computed` (or precomputed fields on row models, e.g. `widthClass`).
+- Keep `@for` / `@if` in templates; keep sorting, filtering, and class derivation in the class or a pure helper.
+- Import models/constants/enums from `models/` and `constants/` — do not redefine them in the component file.
+- Services own HTTP, error mapping, and reusable presentation helpers (e.g. `TailwindWidthService`); components subscribe / call and update signals.
+- Do not keep ratio→class / formatting tables as free functions in component files — put thresholds in `constants/`, logic in a service.

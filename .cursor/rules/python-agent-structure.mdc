@@ -1,0 +1,16 @@
+---
+description: Keep Python agent modules layered — schemas, tools, prompts, data
+globs: app/**/*.py
+alwaysApply: false
+---
+
+# Python agent layout
+
+- **schemas/** — Pydantic request/response and tool I/O models.
+- **tools/** — allowlisted tool entrypoints + registry only.
+- **services/** — data loading and analytics (no FastAPI routes).
+- **agent/** — router, answers, prompts, orchestrator (no DB SQL).
+- **data/** — seed / fallback datasets; keep aligned with PortfolioAPI when shared.
+- **api/** — HTTP adapters only; call tools/services, do not embed business rules.
+
+Do not put tool result templates or route patterns in API routers — keep them in `agent/answers.py` and `agent/router.py`.

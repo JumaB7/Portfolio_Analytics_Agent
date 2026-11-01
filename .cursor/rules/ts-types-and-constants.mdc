@@ -1,0 +1,65 @@
+---
+description: Models, interfaces, enums, and constants — keep types out of components
+globs: web/**/*.ts
+alwaysApply: false
+---
+
+# TypeScript — models, enums, constants
+
+Keep components thin. Put shared types and fixed values in `models/` or `constants/`, not inside component classes.
+
+## Folder roles
+
+| Folder | Holds |
+| --- | --- |
+| `models/` | Interfaces, enums, DTO shapes (`chat.models.ts`) |
+| `constants/` | Fixed catalogs and copy (`*.constants.ts`) |
+| `services/` | HTTP, mapping, error helpers — logic, not string lists |
+| `components/` | UI only — import from the above |
+
+## Interface vs enum vs const
+
+- **Interface / type** — object shapes and API payloads (`ChatResponse`, `ApiErrorBody`).
+- **String enum** — small closed identifier sets from the API or UI state (`ToolStatus.Ok`, `AnswerSource.Router`). Values must match JSON wire format.
+- **`Record` / const object / array** — lookup tables and user-facing copy. Prefer `Record` (or `as const`) over enum when values are strings/labels, not identifiers.
+
+### Record lookups — one map, default fallback
+
+Put the message **on the key** (status, code, prefix). Do not maintain a second named-message map that the status map indexes into.
+
+Wrong — double indirection:
+
+```ts
+const API_ERROR_MESSAGES = { unreachable: 'Could not reach…', /* … */ };
+const API_ERROR_BY_STATUS = { 0: API_ERROR_MESSAGES.unreachable };
+```
+
+Right — single `Record`, default unknown:
+
+```ts
+export const API_ERROR_BY_STATUS: Record<number, string> = {
+  0: 'Could not reach the API. Start uvicorn on port 8000, then retry.',
+  502: 'The LLM provider failed. …',
+  503: 'The analytics API is unavailable. …',
+};
+
+export const API_ERROR_UNKNOWN = 'Request failed. Is the API running on port 8000?';
+
+export function httpFailureMessage(status: number): string {
+  return API_ERROR_BY_STATUS[status] ?? API_ERROR_UNKNOWN;
+}
+```
+
+Same idea for string keys (`skuPrefixes: Record<string, string>`).
+
+Wrong — sample prompts inside the component:
+
+```ts
+readonly samplePrompts = ['Who is Jumari?', /* … */] as const;
+```
+
+Right — `constants/chat.constants.ts` → import `SAMPLE_PROMPTS`.
+
+## Comparisons
+
+Use enum members in TS and templates (`ToolStatus.Ok`), not raw `'ok'` strings. Expose the enum on the component if the template needs it: `readonly ToolStatus = ToolStatus`.
