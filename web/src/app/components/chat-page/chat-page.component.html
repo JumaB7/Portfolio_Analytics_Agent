@@ -1,98 +1,124 @@
-<div class="shell">
-  <header class="hero">
-    <p class="eyebrow">Synthetic demo data · ZAR</p>
-    <h1>Portfolio Analytics Agent</h1>
-    <p class="lede">
+<div class="mx-auto grid w-[min(920px,calc(100%-2rem))] gap-7 py-10 pb-16">
+  <header>
+    <p class="m-0 text-[0.78rem] tracking-[0.14em] text-accent uppercase">
+      Synthetic demo data · ZAR
+    </p>
+    <h1
+      class="mt-1.5 mb-0 font-display text-[clamp(2rem,4vw,3rem)] font-medium tracking-[-0.03em] text-ink"
+    >
+      Portfolio Analytics Agent
+    </h1>
+    <p class="mt-3.5 mb-0 max-w-[38rem] leading-relaxed text-muted">
       Ask grounded questions about a fictional e-commerce store. The model can only call
       allowlisted tools — never raw SQL.
     </p>
   </header>
 
-  <section class="composer" aria-label="Ask a question">
+  <section
+    class="border border-stroke bg-surface/90 p-[1.15rem_1.2rem] backdrop-blur-sm"
+    aria-label="Ask a question"
+  >
     <label class="sr-only" for="question">Question</label>
     <textarea
       id="question"
       rows="3"
+      class="min-h-[5.5rem] w-full resize-y border border-stroke-strong bg-surface-elevated px-[0.95rem] py-[0.85rem] font-sans leading-snug text-ink focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-accent/55 disabled:opacity-60"
       [ngModel]="draft()"
       (ngModelChange)="draft.set($event)"
       (keydown.enter)="onEnter($event)"
       placeholder="e.g. What were our total sales last month?"
       [disabled]="sending()"
     ></textarea>
-    <div class="composer-row">
+    <div class="mt-3.5 flex flex-wrap items-center gap-4">
       <button
         type="button"
-        [ngClass]="{ send: true, 'send-disabled': !canSend() }"
+        class="cursor-pointer border-0 bg-accent px-[1.15rem] py-[0.7rem] font-bold text-on-accent hover:bg-accent-bright disabled:cursor-not-allowed disabled:opacity-45"
         [disabled]="!canSend()"
         (click)="send()"
       >
         {{ sending() ? 'Asking…' : 'Ask agent' }}
       </button>
-      <p class="hint">Enter to send · Shift+Enter for a new line</p>
+      <p class="m-0 text-[0.82rem] text-muted">Enter to send · Shift+Enter for a new line</p>
     </div>
 
-    <div class="samples" aria-label="Sample prompts">
+    <div class="mt-4 flex flex-wrap gap-2" aria-label="Sample prompts">
       @for (prompt of samplePrompts; track prompt) {
-        <button type="button" class="sample" (click)="useSample(prompt)">
+        <button
+          type="button"
+          class="cursor-pointer border border-stroke-strong bg-transparent px-[0.7rem] py-[0.45rem] text-left text-[0.82rem] text-muted hover:border-accent hover:text-ink"
+          (click)="useSample(prompt)"
+        >
           {{ prompt }}
         </button>
       }
     </div>
   </section>
 
-  <section class="timeline" aria-live="polite">
+  <section class="grid gap-4" aria-live="polite">
     @if (turns().length === 0) {
-      <p class="empty">No questions yet. Try a sample prompt above.</p>
+      <p class="m-0 text-muted">No questions yet. Try a sample prompt above.</p>
     }
 
     @for (turn of turns(); track turn.id) {
-      <article class="turn">
-        <div class="question">
-          <span class="tag">You</span>
-          <p>{{ turn.question }}</p>
+      <article class="border border-stroke bg-surface/90 p-[1.15rem_1.2rem] backdrop-blur-sm">
+        <div>
+          <span class="inline-block text-[0.72rem] tracking-[0.08em] text-muted uppercase">You</span>
+          <p class="mt-[0.45rem] mb-0 whitespace-pre-wrap leading-relaxed">{{ turn.question }}</p>
         </div>
 
         @if (turn.loading) {
-          <p class="loading">Running bounded tool loop…</p>
+          <p class="mt-3.5 mb-0 text-muted">Running bounded tool loop…</p>
         }
 
         @if (turn.error) {
-          <p class="error">{{ turn.error }}</p>
+          <p class="mt-3.5 mb-0 text-danger">{{ turn.error }}</p>
         }
 
         @if (turn.response; as response) {
-          <div class="answer">
-            <div class="answer-head">
-              <span class="tag accent">Agent</span>
+          <div>
+            <div class="flex flex-wrap items-center gap-[0.65rem]">
+              <span class="inline-block text-[0.72rem] tracking-[0.08em] text-accent uppercase"
+                >Agent</span
+              >
               @if (response.is_demo_dataset) {
-                <span class="badge">Demo dataset</span>
+                <span
+                  class="bg-accent px-[0.45rem] py-[0.15rem] text-[0.72rem] tracking-[0.06em] text-on-accent uppercase"
+                >
+                  Demo dataset
+                </span>
               }
-              <span class="meta">
+              <span
+                class="ml-0 font-mono text-[0.78rem] text-muted sm:ml-auto"
+              >
                 {{ response.model }} · {{ response.llm_calls ?? response.iterations }} LLM call(s)
                 @if (response.answer_source) {
                   · {{ response.answer_source }}
                 }
               </span>
             </div>
-            <p class="answer-body">{{ response.answer }}</p>
+            <p class="mt-[0.45rem] mb-0 whitespace-pre-wrap leading-relaxed">{{ response.answer }}</p>
 
             @if (response.tool_activity.length) {
-              <ul class="activity">
+              <ul class="mt-4 mb-0 grid list-none gap-[0.4rem] p-0">
                 @for (item of response.tool_activity; track $index) {
-                  <li>
+                  <li class="flex flex-wrap items-baseline gap-2 text-[0.86rem]">
                     <span
-                      class="status"
+                      class="border px-[0.4rem] py-[0.12rem] text-[0.7rem] tracking-[0.08em] uppercase"
                       [ngClass]="{
-                        'status-ok': item.status === 'ok',
-                        'status-error': item.status === 'error',
-                        'status-rejected': item.status === 'rejected'
+                        'border-accent/50 text-accent': item.status === 'ok',
+                        'border-danger/45 text-danger':
+                          item.status === 'error' || item.status === 'rejected',
+                        'border-stroke text-muted':
+                          item.status !== 'ok' &&
+                          item.status !== 'error' &&
+                          item.status !== 'rejected',
                       }"
                     >
                       {{ item.status }}
                     </span>
-                    <code>{{ item.tool_name }}</code>
+                    <code class="font-mono text-ink">{{ item.tool_name }}</code>
                     @if (item.detail) {
-                      <span class="detail">{{ item.detail }}</span>
+                      <span class="text-muted">{{ item.detail }}</span>
                     }
                   </li>
                 }

@@ -19,7 +19,6 @@ import { ToolResultsComponent } from '../tool-results/tool-results.component';
   standalone: true,
   imports: [FormsModule, NgClass, ToolResultsComponent],
   templateUrl: './chat-page.component.html',
-  styleUrl: './chat-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChatPageComponent {

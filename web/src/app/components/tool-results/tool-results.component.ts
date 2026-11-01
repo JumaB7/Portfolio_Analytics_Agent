@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { ToolActivity } from '../../models/chat.models';
@@ -13,16 +13,15 @@ interface RankRow {
 @Component({
   selector: 'app-tool-results',
   standalone: true,
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, NgClass],
   templateUrl: './tool-results.component.html',
-  styleUrl: './tool-results.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ToolResultsComponent {
   readonly activity = input.required<ToolActivity[]>();
 
   readonly okActivities = computed(() =>
-    this.activity().filter((item) => item.status === 'ok' && item.result)
+    this.activity().filter((item) => item.status === 'ok' && item.result),
   );
 
   readonly maxRevenue = computed(() => {
@@ -48,7 +47,7 @@ export class ToolResultsComponent {
           {
             title: 'Units sold',
             value: String(result['units_sold'] ?? 0),
-          }
+          },
         );
       }
       if (item.tool_name === 'compare_sales_periods') {
@@ -71,7 +70,7 @@ export class ToolResultsComponent {
             value: `${this.formatZar(result['revenue_change'])}${
               pct === null || pct === undefined ? '' : ` (${pct}%)`
             }`,
-          }
+          },
         );
       }
     }
@@ -107,10 +106,23 @@ export class ToolResultsComponent {
     return rows;
   });
 
-  barWidth(revenue: number): string {
+  readonly barWidthByLabel = computed(() => {
     const max = this.maxRevenue() || 1;
-    return `${Math.max(6, (revenue / max) * 100)}%`;
-  }
+    const map = new Map<string, string>();
+    for (const row of this.rankRows()) {
+      const key = row.label + (row.sublabel ?? '');
+      const ratio = row.revenue / max;
+      let width = 'w-1/6';
+      if (ratio >= 0.9) width = 'w-full';
+      else if (ratio >= 0.75) width = 'w-4/5';
+      else if (ratio >= 0.6) width = 'w-3/4';
+      else if (ratio >= 0.45) width = 'w-1/2';
+      else if (ratio >= 0.3) width = 'w-2/5';
+      else if (ratio >= 0.15) width = 'w-1/4';
+      map.set(key, width);
+    }
+    return map;
+  });
 
   private rangeHint(result: Record<string, unknown>): string | undefined {
     const start = result['start_date'];
