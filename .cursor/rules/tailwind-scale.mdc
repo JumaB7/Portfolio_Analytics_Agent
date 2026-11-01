@@ -1,0 +1,52 @@
+---
+description: Prefer Tailwind scale utilities; avoid arbitrary values and inline styling
+globs: web/**/*.{html,ts,css}
+alwaysApply: false
+---
+
+# Tailwind — scale classes, no inline styling
+
+## Prefer scale utilities
+
+Use Tailwind’s built-in spacing, type, and tracking scale. Avoid arbitrary values like `text-[0.78rem]` or `mt-[0.35rem]` when a named utility is close enough.
+
+**Prefer**
+
+- `text-xs` / `text-sm` / `text-base` / `text-lg` over `text-[0.78rem]`
+- `mt-1` / `mt-1.5` / `mt-2` over `mt-[0.35rem]`
+- `px-3` `py-2` / `p-4` over `p-[1.15rem_1.2rem]`
+- `tracking-wide` / `tracking-wider` / `tracking-widest` over `tracking-[0.08em]`
+- `gap-2` / `gap-3` / `gap-4` over `gap-[0.65rem]`
+- Responsive type: `text-4xl md:text-5xl` over `text-[clamp(...)]`
+
+**Allowed exceptions** (only when the scale cannot express the layout)
+
+- One-off layout math: `w-[min(920px,calc(100%-2rem))]`
+- Complex grids with no scale equivalent: `grid-cols-[repeat(auto-fit,minmax(...))]`
+
+## No inline styling
+
+Do not style from the template with runtime width/color math.
+
+- No `style=""` / `[style.*]` / `[style.width]`
+- No template `Map.get(...)` or method calls that pick CSS classes for layout
+- Derive presentation fields in a `computed` (e.g. `widthClass` on each row) and bind with `[ngClass]="row.widthClass"`
+- Prefer static Tailwind classes; use `[ngClass]` only for discrete state (ok/error) or precomputed utility names
+
+Wrong:
+
+```html
+<div [style.width.%]="percent(row)"></div>
+<div [ngClass]="barWidthByLabel().get(row.label) ?? 'w-1/6'"></div>
+```
+
+Right:
+
+```ts
+// in computed rankRows
+widthClass: widthClassForRatio(row.revenue / max)
+```
+
+```html
+<div class="h-full bg-accent" [ngClass]="row.widthClass"></div>
+```

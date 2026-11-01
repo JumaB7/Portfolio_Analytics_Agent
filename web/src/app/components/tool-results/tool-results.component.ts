@@ -1,14 +1,17 @@
 import { CurrencyPipe, NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+} from '@angular/core';
 
-import { ToolActivity } from '../../models/chat.models';
-
-interface RankRow {
-  label: string;
-  sublabel?: string;
-  revenue: number;
-  secondary?: string;
-}
+import { ToolName } from '../../constants/tool-names.constants';
+import { ToolActivity, ToolStatus } from '../../models/chat.models';
+import { RankRow, ToolSummaryCard } from '../../models/tool-results.models';
+import { TailwindWidthService } from '../../services/tailwind-width.service';
+import { ToolResultsFormatService } from '../../services/tool-results-format.service';
 
 @Component({
   selector: 'app-tool-results',
@@ -18,27 +21,25 @@ interface RankRow {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ToolResultsComponent {
+  private readonly widths = inject(TailwindWidthService);
+  private readonly format = inject(ToolResultsFormatService);
+
   readonly activity = input.required<ToolActivity[]>();
 
   readonly okActivities = computed(() =>
-    this.activity().filter((item) => item.status === 'ok' && item.result),
+    this.activity().filter((item) => item.status === ToolStatus.Ok && item.result),
   );
 
-  readonly maxRevenue = computed(() => {
-    const values = this.rankRows().map((row) => row.revenue);
-    return values.length ? Math.max(...values) : 1;
-  });
-
   readonly summaryCards = computed(() => {
-    const cards: Array<{ title: string; value: string; hint?: string }> = [];
+    const cards: ToolSummaryCard[] = [];
     for (const item of this.okActivities()) {
       const result = item.result ?? {};
-      if (item.tool_name === 'get_sales_summary') {
+      if (item.tool_name === ToolName.GetSalesSummary) {
         cards.push(
           {
             title: 'Revenue',
-            value: this.formatZar(result['total_revenue']),
-            hint: this.rangeHint(result),
+            value: this.format.formatZar(result['total_revenue']),
+            hint: this.format.rangeHint(result),
           },
           {
             title: 'Orders',
@@ -50,24 +51,24 @@ export class ToolResultsComponent {
           },
         );
       }
-      if (item.tool_name === 'compare_sales_periods') {
+      if (item.tool_name === ToolName.CompareSalesPeriods) {
         const current = (result['current_period'] as Record<string, unknown>) ?? {};
         const previous = (result['previous_period'] as Record<string, unknown>) ?? {};
         const pct = result['revenue_change_pct'];
         cards.push(
           {
             title: 'Current revenue',
-            value: this.formatZar(current['total_revenue']),
-            hint: this.rangeHint(current),
+            value: this.format.formatZar(current['total_revenue']),
+            hint: this.format.rangeHint(current),
           },
           {
             title: 'Previous revenue',
-            value: this.formatZar(previous['total_revenue']),
-            hint: this.rangeHint(previous),
+            value: this.format.formatZar(previous['total_revenue']),
+            hint: this.format.rangeHint(previous),
           },
           {
             title: 'Change',
-            value: `${this.formatZar(result['revenue_change'])}${
+            value: `${this.format.formatZar(result['revenue_change'])}${
               pct === null || pct === undefined ? '' : ` (${pct}%)`
             }`,
           },
@@ -78,10 +79,10 @@ export class ToolResultsComponent {
   });
 
   readonly rankRows = computed((): RankRow[] => {
-    const rows: RankRow[] = [];
+    const rows: Omit<RankRow, 'widthClass'>[] = [];
     for (const item of this.okActivities()) {
       const result = item.result ?? {};
-      if (item.tool_name === 'get_revenue_by_category') {
+      if (item.tool_name === ToolName.GetRevenueByCategory) {
         const categories = (result['categories'] as Array<Record<string, unknown>>) ?? [];
         for (const category of categories) {
           rows.push({
@@ -91,7 +92,7 @@ export class ToolResultsComponent {
           });
         }
       }
-      if (item.tool_name === 'get_product_performance') {
+      if (item.tool_name === ToolName.GetProductPerformance) {
         const products = (result['products'] as Array<Record<string, unknown>>) ?? [];
         for (const product of products) {
           rows.push({
@@ -103,42 +104,7 @@ export class ToolResultsComponent {
         }
       }
     }
-    return rows;
+
+    return this.widths.withRelativeWidths(rows);
   });
-
-  readonly barWidthByLabel = computed(() => {
-    const max = this.maxRevenue() || 1;
-    const map = new Map<string, string>();
-    for (const row of this.rankRows()) {
-      const key = row.label + (row.sublabel ?? '');
-      const ratio = row.revenue / max;
-      let width = 'w-1/6';
-      if (ratio >= 0.9) width = 'w-full';
-      else if (ratio >= 0.75) width = 'w-4/5';
-      else if (ratio >= 0.6) width = 'w-3/4';
-      else if (ratio >= 0.45) width = 'w-1/2';
-      else if (ratio >= 0.3) width = 'w-2/5';
-      else if (ratio >= 0.15) width = 'w-1/4';
-      map.set(key, width);
-    }
-    return map;
-  });
-
-  private rangeHint(result: Record<string, unknown>): string | undefined {
-    const start = result['start_date'];
-    const end = result['end_date'];
-    if (!start || !end) {
-      return undefined;
-    }
-    return `${start} → ${end}`;
-  }
-
-  private formatZar(value: unknown): string {
-    const amount = Number(value ?? 0);
-    return new Intl.NumberFormat('en-ZA', {
-      style: 'currency',
-      currency: 'ZAR',
-      maximumFractionDigits: 2,
-    }).format(amount);
-  }
 }

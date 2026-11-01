@@ -1,13 +1,13 @@
 @if (summaryCards().length || rankRows().length) {
   <section class="mt-4 grid gap-5" aria-label="Structured tool results">
     @if (summaryCards().length) {
-      <div class="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         @for (card of summaryCards(); track card.title + card.value) {
-          <article class="border border-stroke bg-surface-elevated/90 px-[1.1rem] py-4">
-            <p class="m-0 text-[0.72rem] tracking-[0.08em] text-muted uppercase">{{ card.title }}</p>
-            <p class="mt-[0.45rem] mb-0 font-mono text-[1.15rem] text-ink">{{ card.value }}</p>
+          <article class="border border-stroke bg-surface-elevated/90 px-4 py-4">
+            <p class="m-0 text-xs tracking-wider text-muted uppercase">{{ card.title }}</p>
+            <p class="mt-1.5 mb-0 font-mono text-lg text-ink">{{ card.value }}</p>
             @if (card.hint) {
-              <p class="mt-[0.35rem] mb-0 text-[0.78rem] text-muted">{{ card.hint }}</p>
+              <p class="mt-1.5 mb-0 text-xs text-muted">{{ card.hint }}</p>
             }
           </article>
         }
@@ -15,29 +15,29 @@
     }
 
     @if (rankRows().length) {
-      <div class="grid gap-[0.9rem]">
+      <div class="grid gap-4">
         @for (row of rankRows(); track row.label + row.sublabel) {
-          <div class="grid gap-[0.45rem]">
+          <div class="grid gap-1.5">
             <div class="flex items-start justify-between gap-4">
               <div>
                 <p class="m-0 font-semibold text-ink">{{ row.label }}</p>
                 @if (row.sublabel) {
-                  <p class="mt-[0.2rem] mb-0 text-[0.8rem] text-muted">{{ row.sublabel }}</p>
+                  <p class="mt-0.5 mb-0 text-sm text-muted">{{ row.sublabel }}</p>
                 }
               </div>
               <div class="text-right">
-                <p class="m-0 font-mono text-[0.95rem] text-accent">
+                <p class="m-0 font-mono text-sm text-accent">
                   {{ row.revenue | currency: 'ZAR' : 'symbol-narrow' : '1.2-2' : 'en-ZA' }}
                 </p>
                 @if (row.secondary) {
-                  <p class="mt-[0.2rem] mb-0 text-[0.8rem] text-muted">{{ row.secondary }}</p>
+                  <p class="mt-0.5 mb-0 text-sm text-muted">{{ row.secondary }}</p>
                 }
               </div>
             </div>
-            <div class="h-[0.45rem] overflow-hidden bg-stroke" aria-hidden="true">
+            <div class="h-1.5 overflow-hidden bg-stroke" aria-hidden="true">
               <div
                 class="h-full bg-gradient-to-r from-accent-deep to-accent transition-[width] duration-300 ease-out"
-                [ngClass]="barWidthByLabel().get(row.label + (row.sublabel ?? '')) ?? 'w-1/6'"
+                [ngClass]="row.widthClass"
               ></div>
             </div>
           </div>

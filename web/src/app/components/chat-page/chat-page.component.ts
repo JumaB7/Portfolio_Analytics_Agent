@@ -9,8 +9,9 @@ import {
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 
-import { ChatTurn } from '../../models/chat.models';
-import { readApiErrorMessage } from '../../services/api-error';
+import { SAMPLE_PROMPTS } from '../../constants/chat.constants';
+import { ChatTurn, ToolStatus } from '../../models/chat.models';
+import { ApiErrorService } from '../../services/api-error.service';
 import { ChatApiService } from '../../services/chat-api.service';
 import { ToolResultsComponent } from '../tool-results/tool-results.component';
 
@@ -23,17 +24,13 @@ import { ToolResultsComponent } from '../tool-results/tool-results.component';
 })
 export class ChatPageComponent {
   private readonly chatApi = inject(ChatApiService);
+  private readonly apiErrors = inject(ApiErrorService);
 
   readonly draft = signal('');
   readonly turns = signal<ChatTurn[]>([]);
   readonly sending = signal(false);
-
-  readonly samplePrompts = [
-    'What were our total sales last month?',
-    'Which product category generated the most revenue last month?',
-    'How did sales change compared with the previous month?',
-    'Which products have the lowest sales last month?',
-  ] as const;
+  readonly samplePrompts = SAMPLE_PROMPTS;
+  readonly ToolStatus = ToolStatus;
 
   readonly canSend = computed(() => this.draft().trim().length > 0 && !this.sending());
 
@@ -73,7 +70,7 @@ export class ChatPageComponent {
           );
         },
         error: (err: unknown) => {
-          const detail = readApiErrorMessage(err);
+          const detail = this.apiErrors.messageFromUnknown(err);
           this.turns.update((existing) =>
             existing.map((turn) =>
               turn.id === turnId

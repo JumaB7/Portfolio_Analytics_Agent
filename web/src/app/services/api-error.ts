@@ -1,4 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import {
+  API_ERROR_UNKNOWN,
+  httpFailureMessage,
+} from '../constants/api-error.constants';
 
 export interface ApiErrorBody {
   code?: string;
@@ -7,7 +11,7 @@ export interface ApiErrorBody {
 
 export function readApiErrorMessage(err: unknown): string {
   if (!(err instanceof HttpErrorResponse)) {
-    return 'Request failed. Is the API running on port 8000?';
+    return API_ERROR_UNKNOWN;
   }
 
   const detail = err.error?.detail;
@@ -23,17 +27,5 @@ export function readApiErrorMessage(err: unknown): string {
     }
   }
 
-  if (err.status === 0) {
-    return 'Could not reach the API. Start uvicorn on port 8000, then retry.';
-  }
-
-  if (err.status === 503) {
-    return 'The analytics API is unavailable (often a missing LLM key or exhausted credits).';
-  }
-
-  if (err.status === 502) {
-    return 'The LLM provider failed. Check LLM_API_KEY, LLM_BASE_URL, and provider status.';
-  }
-
-  return `Request failed with HTTP ${err.status}.`;
+  return httpFailureMessage(err.status);
 }

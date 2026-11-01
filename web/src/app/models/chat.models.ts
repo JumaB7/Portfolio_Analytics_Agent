@@ -1,4 +1,16 @@
-export type ToolStatus = 'ok' | 'error' | 'rejected';
+/** Allowlisted tool outcome from the agent API. */
+export enum ToolStatus {
+  Ok = 'ok',
+  Error = 'error',
+  Rejected = 'rejected',
+}
+
+/** How the final answer text was produced. */
+export enum AnswerSource {
+  Router = 'router',
+  Template = 'template',
+  Llm = 'llm',
+}
 
 export interface ToolActivity {
   tool_name: string;
@@ -12,8 +24,6 @@ export interface ChatRequest {
   message: string;
   session_id?: string;
 }
-
-export type AnswerSource = 'router' | 'template' | 'llm';
 
 export interface ChatResponse {
   answer: string;
